@@ -19,7 +19,7 @@ jobs:
       - name: Instalar Motores (Flet y yt-dlp)
         run: |
           python -m pip install --upgrade pip
-          pip install flet yt-dlp pyinstaller
+          pip install flet yt-dlp pyinstaller pillow
 
       - name: Descargar motor de video (FFmpeg)
         run: |
