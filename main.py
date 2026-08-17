@@ -16,12 +16,10 @@ COLOR_TERM_BG = "#000000"
 COLOR_TEXT_DIM = "#8f9bb3"
 COLOR_BOTON_OFF = "#2a2e45"
 
-# LA SOLUCIÓN MAESTRA AL PROBLEMA DE CALIDAD (Rutas en .exe)
+# RUTA ABSOLUTA PARA FFMPEG (La clave del HD)
 if getattr(sys, 'frozen', False):
-    # Si es un .exe compilado, busca exactamente donde está el .exe
-    DIRECTORIO_APP = os.path.dirname(sys.executable)
+    DIRECTORIO_APP = os.path.dirname(os.path.abspath(sys.argv[0]))
 else:
-    # Si es el script de python normal
     DIRECTORIO_APP = os.path.dirname(os.path.abspath(__file__))
 
 NOMBRE_FFMPEG = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
@@ -36,63 +34,85 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "Cachy Media Downloader"
-    page.window_width = 540
-    page.window_height = 650
+    page.title = "💻 Cachy Media🗿"
+    page.window_width = 450
+    page.window_height = 700
     page.window_resizable = False
     page.bgcolor = COLOR_BG
     page.padding = 20
     page.theme_mode = ft.ThemeMode.DARK
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+
+    # --- LA PIZARRA INVISIBLE (Para evitar congelamientos) ---
+    pizarra = {"texto": "", "porcentaje": 0.0, "impreso": ""}
 
     # --- ELEMENTOS DE UI ---
-    lbl_titulo = ft.Text("⚡Cachy Media V10", size=24, weight="bold", color=COLOR_CYAN)
-    lbl_compatibles = ft.Text("✅ Universal: YouTube, TikTok, Facebook, X, Instagram, etc.", size=12, color=COLOR_GREEN)
+    lbl_titulo = ft.Text("💻 Cachy Media🗿", size=26, weight="bold", color=COLOR_CYAN)
+    lbl_sub = ft.Text("Descargador PRO (Sin Anuncios)", size=12, color=COLOR_TEXT_DIM)
     
+    # Iconos de redes compatibles
+    iconos_redes = ft.Row(
+        [
+            ft.Icon(ft.icons.ONDEMAND_VIDEO, color="#ff0000", size=20), # YouTube
+            ft.Icon(ft.icons.FACEBOOK, color="#1877f2", size=20),       # Facebook
+            ft.Icon(ft.icons.CAMERA_ALT, color="#e1306c", size=20),     # Instagram
+            ft.Icon(ft.icons.MUSIC_NOTE, color="#ffffff", size=20),     # TikTok
+            ft.Icon(ft.icons.ALTERNATE_EMAIL, color="#1da1f2", size=20) # X / Twitter
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=15
+    )
+
     txt_url = ft.TextField(
-        hint_text="Pega la URL del video aquí...", 
-        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=10, width=450, text_size=13
+        hint_text="Pega un enlace de video válido...", 
+        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=20, width=380, text_size=13,
+        prefix_icon=ft.icons.LINK
     )
 
     dd_tipo = ft.Dropdown(
-        label="Formato de Descarga", 
+        label="Elegir Tipo de Archivo", 
         options=[
-            ft.dropdown.Option("🎬 Video MP4 (Máxima Calidad Posible)"),
-            ft.dropdown.Option("🎵 Audio MP3 (Máxima Calidad Posible)")
+            ft.dropdown.Option("🎬 Video HD (Máxima Calidad)"),
+            ft.dropdown.Option("📺 Video SD (Ahorro de Datos)"),
+            ft.dropdown.Option("🎵 Audio MP3 (Alta Calidad)")
         ], 
-        value="🎬 Video MP4 (Máxima Calidad Posible)",
-        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=10, width=450
+        value="🎬 Video HD (Máxima Calidad)",
+        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=15, width=380
     )
     
     btn_descargar = ft.ElevatedButton(
-        "INICIAR DESCARGA", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
-        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), padding=15), width=250
+        "Descargar Archivo", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20), padding=18), width=380,
+        icon=ft.icons.DOWNLOAD_ROUNDED
     )
 
-    # LA SOLUCIÓN AL BUG DE LA VENTANA (Usar TextField en lugar de ListView)
+    progress_bar = ft.ProgressBar(width=380, color=COLOR_CYAN, bgcolor=COLOR_TERM_BG, value=0.0)
+
     terminal_texto = ft.TextField(
-        multiline=True,
-        read_only=True,
-        value="[cachy@media]~ $ Sistema listo.\n",
-        bgcolor=COLOR_TERM_BG,
-        color=COLOR_GREEN,
-        border_color=COLOR_CYAN,
-        border_radius=10,
-        text_size=11,
-        width=450,
-        height=150
+        multiline=True, read_only=True, value="[cachy@media]~ $ Sistema seguro iniciado.\n",
+        bgcolor=COLOR_TERM_BG, color=COLOR_GREEN, border_color="transparent",
+        border_radius=10, text_size=10, width=380, height=100
     )
+
+    # --- EL MARCAPASOS ---
+    def marcapasos():
+        while True:
+            if pizarra["texto"] != "" and pizarra["texto"] != pizarra["impreso"]:
+                terminal_texto.value += f"> {pizarra['texto']}\n"
+                pizarra["impreso"] = pizarra["texto"]
+                page.update()
+            
+            if progress_bar.value != pizarra["porcentaje"]:
+                progress_bar.value = pizarra["porcentaje"]
+                page.update()
+            
+            time.sleep(0.2)
+
+    threading.Thread(target=marcapasos, daemon=True).start()
 
     # --- FUNCIONES ---
-    def escribir_terminal(texto):
-        # En lugar de agregar cajas visuales, solo sumamos texto (Cero lag)
-        terminal_texto.value += f"> {texto}\n"
-        page.update()
-
-    class InterceptorLogger:
-        def debug(self, msg): pass 
-        def info(self, msg): pass
-        def warning(self, msg): pass
-        def error(self, msg): escribir_terminal(f"ERROR: {msg}")
+    def anotar(texto):
+        pizarra["texto"] = texto
 
     def validar_input(e):
         if len(txt_url.value.strip()) > 0:
@@ -108,13 +128,13 @@ def main(page: ft.Page):
     txt_url.on_change = validar_input
 
     def reiniciar_ui():
-        time.sleep(3)
+        time.sleep(4)
         txt_url.value = ""
         validar_input(None)
         txt_url.disabled = False
         dd_tipo.disabled = False
-        terminal_texto.value = "[cachy@media]~ $ Sistema reiniciado.\n"
-        page.update()
+        pizarra["porcentaje"] = 0.0
+        anotar("Listo para un nuevo enlace.")
 
     def ejecutar_descarga(e):
         url = txt_url.value.strip()
@@ -125,95 +145,114 @@ def main(page: ft.Page):
         btn_descargar.color = COLOR_TEXT_DIM
         txt_url.disabled = True
         dd_tipo.disabled = True
+        terminal_texto.value = ""
+        pizarra["porcentaje"] = 0.0
         
-        terminal_texto.value = "[cachy@media]~ $ Iniciando motor de descarga...\n"
-        page.update()
+        anotar("Camuflando conexión como Dispositivo Móvil...")
 
         def trabajo_descarga():
-            estado_ui = {"ultimo_p": -10} 
-
             def hook_progreso(d):
                 if d['status'] == 'downloading':
                     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-                    percent_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
+                    p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
                     try:
-                        p = int(float(percent_str))
-                        if p - estado_ui["ultimo_p"] >= 10:
-                            escribir_terminal(f"Descargando... {p}%")
-                            estado_ui["ultimo_p"] = p
+                        p = float(p_str)
+                        pizarra["porcentaje"] = p / 100.0
+                        anotar(f"Descargando: {p_str}%")
                     except ValueError: pass
                 elif d['status'] == 'finished':
-                    escribir_terminal("Descarga terminada. Fusionando alta calidad...")
+                    pizarra["porcentaje"] = None
+                    anotar("Procesando archivo final (No cierre la app)...")
 
+            class InterceptorLogger:
+                def debug(self, msg): pass 
+                def info(self, msg): pass
+                def warning(self, msg): pass
+                def error(self, msg): anotar(f"ERR: {msg}")
+
+            # LA MÁSCARA ANTI-BLOQUEOS (El Bypass Maestro)
             opts = {
                 'progress_hooks': [hook_progreso],
                 'logger': InterceptorLogger(),
                 'nocheckcertificate': True,
                 'geo_bypass': True,
-                'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'web']}}
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36'
+                },
+                'extractor_args': {
+                    'youtube': {'player_client': ['android', 'ios']},
+                    'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} # Fuerza API sin marca de agua
+                }
             }
 
+            # LÓGICA DE CALIDADES
             if "Audio" in seleccion:
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Audio).%(ext)s')
                 opts['format'] = 'bestaudio/best'
                 opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
-            else:
-                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Video).%(ext)s')
-                # MÁXIMA CALIDAD GARANTIZADA:
+            elif "SD" in seleccion:
+                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (SD).%(ext)s')
+                opts['format'] = 'bestvideo[height<=480]+bestaudio/best'
+                opts['merge_output_format'] = 'mp4'
+            else: # Video HD
+                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
                 opts['format'] = 'bestvideo+bestaudio/best'
                 opts['merge_output_format'] = 'mp4'
 
-            # VINCULACIÓN CON FFMPEG (AQUÍ ESTABA LA FALLA DE CALIDAD)
             if os.path.exists(RUTA_FFMPEG):
                 opts['ffmpeg_location'] = RUTA_FFMPEG
-                escribir_terminal("Motor FFmpeg detectado. Calidad 1080p+ desbloqueada.")
+                anotar("Motor FFmpeg listo. Procesamiento pesado habilitado.")
             else:
-                escribir_terminal("AVISO: ffmpeg.exe no encontrado. Calidad limitada a 720p.")
+                anotar("ADVERTENCIA: FFmpeg no encontrado. Calidad reducida.")
 
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([url])
                 
-                escribir_terminal(f"¡ÉXITO TOTAL! Guardado en Descargas.")
+                pizarra["porcentaje"] = 1.0
+                anotar(f"✅ ¡Completado! Guardado en Descargas.")
                 reiniciar_ui()
 
             except Exception as ex:
-                escribir_terminal(f"Error o video bloqueado.")
+                anotar(f"❌ Enlace bloqueado o inválido.")
+                pizarra["porcentaje"] = 0.0
                 txt_url.disabled = False
                 validar_input(None)
                 dd_tipo.disabled = False
-                page.update()
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
 
     btn_descargar.on_click = ejecutar_descarga
 
-    # --- CONSTRUIR TARJETA CENTRAL ---
+    # --- CONSTRUIR TARJETA ---
     card = ft.Container(
         content=ft.Column(
             [
                 lbl_titulo, 
-                lbl_compatibles,
-                ft.Container(height=10), 
+                lbl_sub,
+                ft.Container(height=10),
+                ft.Text("Plataformas Soportadas:", size=11, color=COLOR_TEXT_DIM),
+                iconos_redes,
+                ft.Container(height=20), 
                 txt_url, 
                 dd_tipo, 
                 ft.Container(height=10),
+                progress_bar,
                 btn_descargar,
-                ft.Container(height=10),
-                ft.Text("Terminal de Procesos:", size=12, color=COLOR_TEXT_DIM, weight="bold"),
+                ft.Container(height=15),
                 terminal_texto,
-                ft.Text("Desarrollado por semg_mc © 2026", size=10, color=COLOR_TEXT_DIM)
+                ft.Text("Desarrollado por CachyMedia © 2026", size=10, color=COLOR_TEXT_DIM)
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=10
+            spacing=5
         ),
         bgcolor=COLOR_CARD,
         padding=30,
-        border_radius=16,
-        width=500
+        border_radius=25,
+        width=450
     )
 
-    page.add(ft.Row([card], alignment=ft.MainAxisAlignment.CENTER))
+    page.add(card)
 
 if __name__ == "__main__":
     ft.run(main)
