@@ -82,6 +82,19 @@ def main(page: ft.Page):
         terminal_texto.value += f"> {texto}\n"
         page.update()
 
+    # --- LA MAGIA CONTRA EL TARTAMUDEO ---
+    def actualizar_progreso_fluido(p_str, p_float):
+        lineas = terminal_texto.value.strip().split('\n')
+        # Si la última línea ya dice "Descargando", la reemplazamos (Cero lag)
+        if lineas y "Descargando:" in lineas[-1]:
+            lineas[-1] = f"> Descargando: {p_str}%"
+            terminal_texto.value = "\n".join(lineas) + "\n"
+        else:
+            terminal_texto.value += f"> Descargando: {p_str}%\n"
+        
+        progress_bar.value = p_float
+        page.update()
+
     def verificar_motor(*args):
         if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("⚙️ Configurando FFmpeg por primera vez...")
@@ -94,7 +107,6 @@ def main(page: ft.Page):
         elif os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("✅ Motor HD listo y operativo.")
 
-    # Usamos la herramienta nativa de Flet para el motor
     page.run_thread(verificar_motor)
 
     def resetear_interfaz():
@@ -133,7 +145,6 @@ def main(page: ft.Page):
         
         actualizar_terminal("Iniciando secuencia de descarga...")
 
-        # ESTA ES LA FUNCIÓN QUE FLET ADMINISTRARÁ NATIVAMENTE
         def trabajo_descarga(*args):
             max_intentos = 4
             intento_actual = 1
@@ -141,7 +152,7 @@ def main(page: ft.Page):
 
             while intento_actual <= max_intentos and not descarga_exitosa:
                 try:
-                    estado_ui = {"ultimo_p": -5} 
+                    estado_ui = {"ultimo_tiempo": 0.0} 
 
                     def hook_progreso(d):
                         if d['status'] == 'downloading':
@@ -149,10 +160,11 @@ def main(page: ft.Page):
                             p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
                             try:
                                 p = float(p_str)
-                                if p - estado_ui["ultimo_p"] >= 5:
-                                    progress_bar.value = p / 100.0
-                                    actualizar_terminal(f"Descargando: {p_str}%")
-                                    estado_ui["ultimo_p"] = p
+                                ahora = time.time()
+                                # EL CRONÓMETRO: Solo actualiza la pantalla cada 0.3 segundos
+                                if ahora - estado_ui["ultimo_tiempo"] >= 0.3:
+                                    actualizar_progreso_fluido(p_str, p / 100.0)
+                                    estado_ui["ultimo_tiempo"] = ahora
                             except ValueError: pass
                             
                         elif d['status'] == 'finished':
@@ -211,7 +223,6 @@ def main(page: ft.Page):
 
             resetear_interfaz()
 
-        # LA MAGIA OCURRE AQUÍ: Dejamos que Flet lance y controle el hilo.
         page.run_thread(trabajo_descarga)
 
     btn_descargar.on_click = ejecutar_descarga
