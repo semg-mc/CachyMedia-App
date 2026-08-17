@@ -7,7 +7,6 @@ import urllib.request
 import flet as ft
 import yt_dlp
 
-# --- EL SILENCIADOR DE WINDOWS ---
 if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
@@ -165,7 +164,6 @@ def main(page: ft.Page):
                         def warning(self, msg): pass
                         def error(self, msg): pass
 
-                    # CERO HACKS RAROS: Dejamos que yt-dlp trabaje al natural
                     opts = {
                         'quiet': True, 
                         'progress_hooks': [hook_progreso],
@@ -197,20 +195,18 @@ def main(page: ft.Page):
                     actualizar_terminal("✅ Listo para un nuevo enlace.")
 
                 except Exception as ex:
-                    error_str = str(ex)
-                    if "403" in error_str or "Forbidden" in error_str:
-                        if intento_actual < max_intentos:
-                            actualizar_terminal(f"⚠️ Red social bloqueó el acceso (Anti-Bot).")
-                            actualizar_terminal(f"🔄 Reintentando de forma invisible... (Intento {intento_actual}/{max_intentos})")
-                            time.sleep(2) 
-                            intento_actual += 1
-                            progress_bar.value = 0.0
-                            page.update()
-                        else:
-                            actualizar_terminal("❌ La seguridad está muy estricta hoy. Intenta más tarde.")
-                            break
+                    # EL BUCLE TERCO: Si falla por CUALQUIER razón, vuelve a intentar.
+                    if intento_actual < max_intentos:
+                        actualizar_terminal(f"⚠️ El servidor rechazó la conexión.")
+                        actualizar_terminal(f"🔄 Reintentando... (Intento {intento_actual}/{max_intentos})")
+                        time.sleep(2) 
+                        intento_actual += 1
+                        progress_bar.value = 0.0
+                        page.update()
                     else:
-                        actualizar_terminal(f"❌ Error al descargar. Verifica que el enlace sea público.")
+                        # Si a la 4ta no jala, lanzamos tu mensaje
+                        actualizar_terminal("❌ El servidor está muy estricto hoy o el enlace no jala.")
+                        actualizar_terminal("Vuelve a picarle al botón o intenta con otro enlace. Ni modo, andamos haciendo milagros. xd")
                         break
 
             resetear_interfaz()
