@@ -7,7 +7,6 @@ import urllib.request
 import flet as ft
 import yt_dlp
 
-# --- EL SILENCIADOR DE WINDOWS ---
 if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
@@ -34,7 +33,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 CachyVIDEOS🗿"
+    page.title = "🎬 CachyVIDEOS 🎬"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -43,7 +42,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    # --- EL DESFIBRILADOR GRÁFICO (TRUCO SUCIO PARA WINDOWS) ---
+    # --- EL DESFIBRILADOR GRÁFICO (Mantiene despierta la ventana) ---
     pixel_fantasma = ft.Text("", size=1) 
     page.add(pixel_fantasma)
 
@@ -95,6 +94,7 @@ def main(page: ft.Page):
         terminal_texto.value += f"> {texto}\n"
         page.update()
 
+    # --- LA MAGIA CONTRA EL TARTAMUDEO ---
     def actualizar_progreso_fluido(p_str, p_float):
         lineas = terminal_texto.value.strip().split('\n')
         if lineas and "Descargando:" in lineas[-1]:
@@ -106,7 +106,7 @@ def main(page: ft.Page):
         progress_bar.value = p_float
         page.update()
 
-    def verificar_motor(*args):
+    def verificar_motor():
         if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("⚙️ Configurando FFmpeg por primera vez...")
             try:
@@ -118,7 +118,7 @@ def main(page: ft.Page):
         elif os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("✅ Motor HD listo y operativo.")
 
-    page.run_thread(verificar_motor)
+    threading.Thread(target=verificar_motor, daemon=True).start()
 
     def resetear_interfaz():
         txt_url.disabled = False
@@ -156,7 +156,7 @@ def main(page: ft.Page):
         
         actualizar_terminal("Iniciando secuencia de descarga...")
 
-        def trabajo_descarga(*args):
+        def trabajo_descarga():
             max_intentos = 4
             intento_actual = 1
             descarga_exitosa = False
@@ -219,6 +219,7 @@ def main(page: ft.Page):
                     actualizar_terminal("✅ Listo para un nuevo enlace.")
 
                 except Exception as ex:
+                    # EL BUCLE TERCO INTACTO
                     if intento_actual < max_intentos:
                         actualizar_terminal(f"⚠️ El servidor rechazó la conexión.")
                         actualizar_terminal(f"🔄 Reintentando... (Intento {intento_actual}/{max_intentos})")
@@ -228,14 +229,13 @@ def main(page: ft.Page):
                         page.update()
                     else:
                         actualizar_terminal("❌ El servidor está muy estricto hoy o el enlace no jala.")
-                        actualizar_terminal("Vuelve a picarle al botón o intenta con otro enlace. Ni modo. xd")
+                        actualizar_terminal("Vuelve a picarle al botón o intenta con otro enlace. Ni modo, andamos haciendo milagros. xd")
                         break
 
             resetear_interfaz()
 
-        page.run_thread(trabajo_descarga)
+        threading.Thread(target=trabajo_descarga, daemon=True).start()
 
-    # ¡ESTA ES LA LÍNEA MÁGICA QUE HABÍA BORRADO!
     btn_descargar.on_click = ejecutar_descarga
 
     card = ft.Container(
