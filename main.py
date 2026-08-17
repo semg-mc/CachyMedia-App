@@ -49,23 +49,15 @@ def main(page: ft.Page):
     lbl_titulo = ft.Text("💻 Cachy Media🗿", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador PRO (Sin Anuncios)", size=12, color=COLOR_TEXT_DIM)
     
-    # Iconos blindados (Puros textos)
-    iconos_redes = ft.Row(
-        [
-            ft.Icon("play_arrow", color="#ff0000", size=20), 
-            ft.Icon("facebook", color="#1877f2", size=20),       
-            ft.Icon("camera_alt", color="#e1306c", size=20),     
-            ft.Icon("music_note", color="#ffffff", size=20),     
-            ft.Icon("alternate_email", color="#1da1f2", size=20) 
-        ],
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=15
+    # EMOJIS! 100% Inmunes a crasheos porque son puro texto.
+    iconos_redes = ft.Text(
+        "▶️ YouTube  |  📘 Facebook  |  📸 Instagram  |  🎵 TikTok  |  ✖️ X",
+        size=11, color=COLOR_TEXT_DIM, weight="bold"
     )
 
     txt_url = ft.TextField(
-        hint_text="Pega un enlace de video válido...", 
-        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=20, width=380, text_size=13,
-        prefix_icon="link"  # <--- EL CULPABLE HA SIDO ARREGLADO
+        hint_text="🔗 Pega un enlace de video válido...", 
+        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=20, width=380, text_size=13
     )
 
     dd_tipo = ft.Dropdown(
@@ -80,9 +72,8 @@ def main(page: ft.Page):
     )
     
     btn_descargar = ft.ElevatedButton(
-        "Descargar Archivo", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
-        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20), padding=18), width=380,
-        icon="download_rounded"  # <--- EL OTRO CULPABLE HA SIDO ARREGLADO
+        "📥 DESCARGAR ARCHIVO", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20), padding=18), width=380
     )
 
     progress_bar = ft.ProgressBar(width=380, color=COLOR_CYAN, bgcolor=COLOR_TERM_BG, value=0.0)
@@ -229,7 +220,6 @@ def main(page: ft.Page):
                 lbl_titulo, 
                 lbl_sub,
                 ft.Container(height=10),
-                ft.Text("Plataformas Soportadas:", size=11, color=COLOR_TEXT_DIM),
                 iconos_redes,
                 ft.Container(height=20), 
                 txt_url, 
