@@ -16,7 +16,14 @@ COLOR_TERM_BG = "#000000"
 COLOR_TEXT_DIM = "#8f9bb3"
 COLOR_BOTON_OFF = "#2a2e45"
 
-DIRECTORIO_APP = os.path.dirname(os.path.abspath(sys.argv[0]))
+# LA SOLUCIÓN MAESTRA AL PROBLEMA DE CALIDAD (Rutas en .exe)
+if getattr(sys, 'frozen', False):
+    # Si es un .exe compilado, busca exactamente donde está el .exe
+    DIRECTORIO_APP = os.path.dirname(sys.executable)
+else:
+    # Si es el script de python normal
+    DIRECTORIO_APP = os.path.dirname(os.path.abspath(__file__))
+
 NOMBRE_FFMPEG = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
 RUTA_FFMPEG = os.path.join(DIRECTORIO_APP, NOMBRE_FFMPEG)
 
@@ -38,7 +45,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
 
     # --- ELEMENTOS DE UI ---
-    lbl_titulo = ft.Text("⚡ CACHY DOWNLOADER", size=24, weight="bold", color=COLOR_CYAN)
+    lbl_titulo = ft.Text("⚡Cachy Media V10", size=24, weight="bold", color=COLOR_CYAN)
     lbl_compatibles = ft.Text("✅ Universal: YouTube, TikTok, Facebook, X, Instagram, etc.", size=12, color=COLOR_GREEN)
     
     txt_url = ft.TextField(
@@ -61,25 +68,31 @@ def main(page: ft.Page):
         style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), padding=15), width=250
     )
 
-    spinner_carga = ft.ProgressRing(width=20, height=20, stroke_width=3, color=COLOR_CYAN, visible=False)
-    fila_estado = ft.Row([spinner_carga, ft.Text("Terminal de Procesos:", size=12, color=COLOR_TEXT_DIM, weight="bold")], alignment=ft.MainAxisAlignment.START)
-
-    terminal_lista = ft.ListView(expand=True, spacing=2, auto_scroll=True)
-    caja_terminal = ft.Container(
-        content=terminal_lista, bgcolor=COLOR_TERM_BG, border_radius=10, 
-        padding=10, height=150, width=450
+    # LA SOLUCIÓN AL BUG DE LA VENTANA (Usar TextField en lugar de ListView)
+    terminal_texto = ft.TextField(
+        multiline=True,
+        read_only=True,
+        value="[cachy@media]~ $ Sistema listo.\n",
+        bgcolor=COLOR_TERM_BG,
+        color=COLOR_GREEN,
+        border_color=COLOR_CYAN,
+        border_radius=10,
+        text_size=11,
+        width=450,
+        height=150
     )
 
     # --- FUNCIONES ---
-    def escribir_terminal(texto, color=COLOR_GREEN):
-        terminal_lista.controls.append(ft.Text(f"> {texto}", color=color, size=11, font_family="Consolas"))
+    def escribir_terminal(texto):
+        # En lugar de agregar cajas visuales, solo sumamos texto (Cero lag)
+        terminal_texto.value += f"> {texto}\n"
         page.update()
 
     class InterceptorLogger:
         def debug(self, msg): pass 
         def info(self, msg): pass
         def warning(self, msg): pass
-        def error(self, msg): escribir_terminal(f"ERROR: {msg}", COLOR_RED)
+        def error(self, msg): escribir_terminal(f"ERROR: {msg}")
 
     def validar_input(e):
         if len(txt_url.value.strip()) > 0:
@@ -97,12 +110,10 @@ def main(page: ft.Page):
     def reiniciar_ui():
         time.sleep(3)
         txt_url.value = ""
-        txt_url.disabled = False
         validar_input(None)
+        txt_url.disabled = False
         dd_tipo.disabled = False
-        spinner_carga.visible = False
-        terminal_lista.controls.clear()
-        escribir_terminal("Sistema reiniciado y listo para otro enlace.", COLOR_CYAN)
+        terminal_texto.value = "[cachy@media]~ $ Sistema reiniciado.\n"
         page.update()
 
     def ejecutar_descarga(e):
@@ -115,10 +126,7 @@ def main(page: ft.Page):
         txt_url.disabled = True
         dd_tipo.disabled = True
         
-        spinner_carga.visible = True
-        
-        terminal_lista.controls.clear()
-        escribir_terminal(f"Iniciando descarga a MÁXIMA resolución...", COLOR_CYAN)
+        terminal_texto.value = "[cachy@media]~ $ Iniciando motor de descarga...\n"
         page.update()
 
         def trabajo_descarga():
@@ -131,11 +139,11 @@ def main(page: ft.Page):
                     try:
                         p = int(float(percent_str))
                         if p - estado_ui["ultimo_p"] >= 10:
-                            escribir_terminal(f"Descargando: {p}% completado...", COLOR_GREEN)
+                            escribir_terminal(f"Descargando... {p}%")
                             estado_ui["ultimo_p"] = p
                     except ValueError: pass
                 elif d['status'] == 'finished':
-                    escribir_terminal("Descarga terminada. Convirtiendo/Muxing (Esto puede tardar)...", COLOR_CYAN)
+                    escribir_terminal("Descarga terminada. Fusionando alta calidad...")
 
             opts = {
                 'progress_hooks': [hook_progreso],
@@ -151,28 +159,29 @@ def main(page: ft.Page):
                 opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
             else:
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Video).%(ext)s')
-                # LA MAGIA DE LA MÁXIMA CALIDAD:
-                # 1. Agarra el mejor video (sea webm, mp4, mkv) y el mejor audio.
+                # MÁXIMA CALIDAD GARANTIZADA:
                 opts['format'] = 'bestvideo+bestaudio/best'
-                # 2. Obliga a FFmpeg a fusionarlo todo dentro de un archivo .mp4 universal.
                 opts['merge_output_format'] = 'mp4'
 
+            # VINCULACIÓN CON FFMPEG (AQUÍ ESTABA LA FALLA DE CALIDAD)
             if os.path.exists(RUTA_FFMPEG):
                 opts['ffmpeg_location'] = RUTA_FFMPEG
+                escribir_terminal("Motor FFmpeg detectado. Calidad 1080p+ desbloqueada.")
+            else:
+                escribir_terminal("AVISO: ffmpeg.exe no encontrado. Calidad limitada a 720p.")
 
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([url])
                 
-                escribir_terminal(f"¡ÉXITO TOTAL! Revisa tu carpeta de Descargas.", COLOR_GREEN)
+                escribir_terminal(f"¡ÉXITO TOTAL! Guardado en Descargas.")
                 reiniciar_ui()
 
             except Exception as ex:
-                escribir_terminal(f"Error. Verifica que el enlace sea correcto y público.", COLOR_RED)
+                escribir_terminal(f"Error o video bloqueado.")
                 txt_url.disabled = False
                 validar_input(None)
                 dd_tipo.disabled = False
-                spinner_carga.visible = False
                 page.update()
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
@@ -191,9 +200,9 @@ def main(page: ft.Page):
                 ft.Container(height=10),
                 btn_descargar,
                 ft.Container(height=10),
-                ft.Container(content=fila_estado, width=450), 
-                caja_terminal,
-                ft.Text("Desarrollado por CachyMedia & Gemini © 2026", size=10, color=COLOR_TEXT_DIM)
+                ft.Text("Terminal de Procesos:", size=12, color=COLOR_TEXT_DIM, weight="bold"),
+                terminal_texto,
+                ft.Text("Desarrollado por semg_mc © 2026", size=10, color=COLOR_TEXT_DIM)
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=10
