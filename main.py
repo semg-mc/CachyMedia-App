@@ -34,7 +34,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 CachyVideo ▶️"
+    page.title = "🎬 Cachy Video🗿"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -43,7 +43,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    lbl_titulo = ft.Text("🎬 Cachy Video🗿", size=26, weight="bold", color=COLOR_CYAN)
+    lbl_titulo = ft.Text("🎬 CachyVideo 🎬", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador de Video Universal", size=12, color=COLOR_TEXT_DIM)
     
     iconos_redes = ft.Text(
@@ -131,7 +131,7 @@ def main(page: ft.Page):
         progress_bar.value = 0.0
         page.update()
         
-        actualizar_terminal("Conectando al servidor del video...")
+        actualizar_terminal("Conectando de forma segura...")
 
         def trabajo_descarga():
             try:
@@ -160,26 +160,28 @@ def main(page: ft.Page):
                     def warning(self, msg): pass
                     def error(self, msg): actualizar_terminal(f"ERR: {msg}")
 
-                # MAGIA DE FORMATOS: Siempre sale en MP4, sin importar la calidad
+                # LE QUITAMOS LA MÁSCARA AGRESIVA A YOUTUBE PARA EVITAR EL 403
                 opts = {
                     'quiet': True, 
                     'progress_hooks': [hook_progreso],
                     'logger': InterceptorLogger(),
                     'nocheckcertificate': True,
                     'geo_bypass': True,
-                    'merge_output_format': 'mp4',
-                    'postprocessors': [{'key': 'FFmpegVideoConvertor', 'preferedformat': 'mp4'}], 
                     'extractor_args': {
                         'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} 
                     }
                 }
 
+                # LA REGLA DE ORO: Solo descargar piezas compatibles con MP4
                 if "Ligero" in seleccion:
                     opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Ligero).%(ext)s')
-                    opts['format'] = 'bestvideo[height<=480]+bestaudio/best'
+                    opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+                    opts['merge_output_format'] = 'mp4' 
                 else:
                     opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
-                    opts['format'] = 'bestvideo+bestaudio/best'
+                    # Obligamos a que el video sea MP4 y el audio sea M4A. Así FFMPEG jamás falla.
+                    opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+                    opts['merge_output_format'] = 'mp4'
 
                 if os.path.exists(RUTA_FFMPEG):
                     opts['ffmpeg_location'] = RUTA_FFMPEG
