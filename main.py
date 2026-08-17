@@ -16,9 +16,9 @@ COLOR_TERM_BG = "#000000"
 COLOR_TEXT_DIM = "#8f9bb3"
 COLOR_BOTON_OFF = "#2a2e45"
 
-# RUTA ABSOLUTA PARA FFMPEG (La clave del HD)
+# RUTA ABSOLUTA PARA FFMPEG
 if getattr(sys, 'frozen', False):
-    DIRECTORIO_APP = os.path.dirname(os.path.abspath(sys.argv[0]))
+    DIRECTORIO_APP = os.path.dirname(sys.executable)
 else:
     DIRECTORIO_APP = os.path.dirname(os.path.abspath(__file__))
 
@@ -43,21 +43,20 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    # --- LA PIZARRA INVISIBLE (Para evitar congelamientos) ---
     pizarra = {"texto": "", "porcentaje": 0.0, "impreso": ""}
 
     # --- ELEMENTOS DE UI ---
     lbl_titulo = ft.Text("💻 Cachy Media🗿", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador PRO (Sin Anuncios)", size=12, color=COLOR_TEXT_DIM)
     
-    # Iconos de redes compatibles (Blindados contra crashes)
+    # Iconos blindados (Puros textos)
     iconos_redes = ft.Row(
         [
-            ft.Icon("play_arrow", color="#ff0000", size=20),        # YouTube
-            ft.Icon("facebook", color="#1877f2", size=20),          # Facebook
-            ft.Icon("camera_alt", color="#e1306c", size=20),        # Instagram
-            ft.Icon("music_note", color="#ffffff", size=20),        # TikTok
-            ft.Icon("alternate_email", color="#1da1f2", size=20)    # X / Twitter
+            ft.Icon("play_arrow", color="#ff0000", size=20), 
+            ft.Icon("facebook", color="#1877f2", size=20),       
+            ft.Icon("camera_alt", color="#e1306c", size=20),     
+            ft.Icon("music_note", color="#ffffff", size=20),     
+            ft.Icon("alternate_email", color="#1da1f2", size=20) 
         ],
         alignment=ft.MainAxisAlignment.CENTER,
         spacing=15
@@ -66,7 +65,7 @@ def main(page: ft.Page):
     txt_url = ft.TextField(
         hint_text="Pega un enlace de video válido...", 
         bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=20, width=380, text_size=13,
-        prefix_icon=ft.icons.LINK
+        prefix_icon="link"  # <--- EL CULPABLE HA SIDO ARREGLADO
     )
 
     dd_tipo = ft.Dropdown(
@@ -83,7 +82,7 @@ def main(page: ft.Page):
     btn_descargar = ft.ElevatedButton(
         "Descargar Archivo", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
         style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=20), padding=18), width=380,
-        icon=ft.icons.DOWNLOAD_ROUNDED
+        icon="download_rounded"  # <--- EL OTRO CULPABLE HA SIDO ARREGLADO
     )
 
     progress_bar = ft.ProgressBar(width=380, color=COLOR_CYAN, bgcolor=COLOR_TERM_BG, value=0.0)
@@ -170,7 +169,7 @@ def main(page: ft.Page):
                 def warning(self, msg): pass
                 def error(self, msg): anotar(f"ERR: {msg}")
 
-            # LA MÁSCARA ANTI-BLOQUEOS (El Bypass Maestro)
+            # LA MÁSCARA ANTI-BLOQUEOS
             opts = {
                 'progress_hooks': [hook_progreso],
                 'logger': InterceptorLogger(),
@@ -181,11 +180,10 @@ def main(page: ft.Page):
                 },
                 'extractor_args': {
                     'youtube': {'player_client': ['android', 'ios']},
-                    'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} # Fuerza API sin marca de agua
+                    'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} 
                 }
             }
 
-            # LÓGICA DE CALIDADES
             if "Audio" in seleccion:
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Audio).%(ext)s')
                 opts['format'] = 'bestaudio/best'
@@ -194,7 +192,7 @@ def main(page: ft.Page):
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (SD).%(ext)s')
                 opts['format'] = 'bestvideo[height<=480]+bestaudio/best'
                 opts['merge_output_format'] = 'mp4'
-            else: # Video HD
+            else: 
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
                 opts['format'] = 'bestvideo+bestaudio/best'
                 opts['merge_output_format'] = 'mp4'
