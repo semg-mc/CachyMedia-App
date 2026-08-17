@@ -50,14 +50,14 @@ def main(page: ft.Page):
     lbl_titulo = ft.Text("💻 Cachy Media🗿", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador PRO (Sin Anuncios)", size=12, color=COLOR_TEXT_DIM)
     
-    # Iconos de redes compatibles
+    # Iconos de redes compatibles (Blindados contra crashes)
     iconos_redes = ft.Row(
         [
-            ft.Icon(ft.icons.ONDEMAND_VIDEO, color="#ff0000", size=20), # YouTube
-            ft.Icon(ft.icons.FACEBOOK, color="#1877f2", size=20),       # Facebook
-            ft.Icon(ft.icons.CAMERA_ALT, color="#e1306c", size=20),     # Instagram
-            ft.Icon(ft.icons.MUSIC_NOTE, color="#ffffff", size=20),     # TikTok
-            ft.Icon(ft.icons.ALTERNATE_EMAIL, color="#1da1f2", size=20) # X / Twitter
+            ft.Icon("play_arrow", color="#ff0000", size=20),        # YouTube
+            ft.Icon("facebook", color="#1877f2", size=20),          # Facebook
+            ft.Icon("camera_alt", color="#e1306c", size=20),        # Instagram
+            ft.Icon("music_note", color="#ffffff", size=20),        # TikTok
+            ft.Icon("alternate_email", color="#1da1f2", size=20)    # X / Twitter
         ],
         alignment=ft.MainAxisAlignment.CENTER,
         spacing=15
