@@ -28,7 +28,7 @@ jobs:
           Move-Item -Path "ffmpeg_temp\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe" -Destination "ffmpeg.exe"
 
       - name: Empaquetar a .exe
-        run: flet pack main.py --name "CachyMedia"
+        run: flet pack main.py --name "CachyMedia" --icon "icono.png"
 
       - name: Preparar Carpeta Final
         run: |
