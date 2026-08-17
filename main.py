@@ -34,7 +34,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 CachyVIDEO 🎬"
+    page.title = "🎬 CachyVIDEOS 🎬"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -43,7 +43,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    lbl_titulo = ft.Text("🎬 CachyVIDEO 🎬", size=26, weight="bold", color=COLOR_CYAN)
+    lbl_titulo = ft.Text("🎬 CachyVIDEOS 🎬", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador de Video Universal", size=12, color=COLOR_TEXT_DIM)
     
     iconos_redes = ft.Text(
@@ -163,17 +163,15 @@ def main(page: ft.Page):
                         def debug(self, msg): pass 
                         def info(self, msg): pass
                         def warning(self, msg): pass
-                        def error(self, msg): pass # Silenciamos los errores de la librería para manejarlos nosotros
+                        def error(self, msg): pass
 
+                    # CERO HACKS RAROS: Dejamos que yt-dlp trabaje al natural
                     opts = {
                         'quiet': True, 
                         'progress_hooks': [hook_progreso],
                         'logger': InterceptorLogger(),
                         'nocheckcertificate': True,
-                        'geo_bypass': True,
-                        'extractor_args': {
-                            'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} 
-                        }
+                        'geo_bypass': True
                     }
 
                     if "Ligero" in seleccion:
@@ -202,20 +200,19 @@ def main(page: ft.Page):
                     error_str = str(ex)
                     if "403" in error_str or "Forbidden" in error_str:
                         if intento_actual < max_intentos:
-                            actualizar_terminal(f"⚠️ YouTube bloqueó el acceso (Seguridad Anti-Bot).")
-                            actualizar_terminal(f"🔄 Aplicando Bypass Invisible... (Intento {intento_actual}/{max_intentos})")
-                            time.sleep(2) # Pausa táctica antes de atacar de nuevo
+                            actualizar_terminal(f"⚠️ Red social bloqueó el acceso (Anti-Bot).")
+                            actualizar_terminal(f"🔄 Reintentando de forma invisible... (Intento {intento_actual}/{max_intentos})")
+                            time.sleep(2) 
                             intento_actual += 1
                             progress_bar.value = 0.0
                             page.update()
                         else:
-                            actualizar_terminal("❌ YouTube está demasiado estricto hoy. Intenta más tarde.")
+                            actualizar_terminal("❌ La seguridad está muy estricta hoy. Intenta más tarde.")
                             break
                     else:
                         actualizar_terminal(f"❌ Error al descargar. Verifica que el enlace sea público.")
                         break
 
-            # Pase lo que pase en el bucle, liberamos la interfaz al final
             resetear_interfaz()
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
