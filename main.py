@@ -34,7 +34,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 Cachy Video🗿"
+    page.title = "🎬 CachyVIDEO 🎬"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -43,7 +43,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    lbl_titulo = ft.Text("🎬 CachyVideo 🎬", size=26, weight="bold", color=COLOR_CYAN)
+    lbl_titulo = ft.Text("🎬 CachyVIDEO 🎬", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador de Video Universal", size=12, color=COLOR_TEXT_DIM)
     
     iconos_redes = ft.Text(
@@ -76,7 +76,7 @@ def main(page: ft.Page):
     terminal_texto = ft.TextField(
         multiline=True, read_only=True, value="[cachy@video]~ $ Motor de video iniciado.\n",
         bgcolor=COLOR_TERM_BG, color=COLOR_GREEN, border_color="transparent",
-        border_radius=10, text_size=10, width=380, height=120
+        border_radius=10, text_size=10, width=380, height=140
     )
 
     def actualizar_terminal(texto):
@@ -131,75 +131,92 @@ def main(page: ft.Page):
         progress_bar.value = 0.0
         page.update()
         
-        actualizar_terminal("Conectando de forma segura...")
+        actualizar_terminal("Iniciando secuencia de descarga...")
 
         def trabajo_descarga():
-            try:
-                estado_ui = {"ultimo_p": -5} 
+            max_intentos = 4
+            intento_actual = 1
+            descarga_exitosa = False
 
-                def hook_progreso(d):
-                    if d['status'] == 'downloading':
-                        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-                        p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
-                        try:
-                            p = float(p_str)
-                            if p - estado_ui["ultimo_p"] >= 5:
-                                progress_bar.value = p / 100.0
-                                actualizar_terminal(f"Descargando: {p_str}%")
-                                estado_ui["ultimo_p"] = p
-                        except ValueError: pass
-                        
-                    elif d['status'] == 'finished':
-                        progress_bar.value = None
-                        actualizar_terminal("Ensamblando Video MP4 Universal...")
-                        page.update()
+            while intento_actual <= max_intentos and not descarga_exitosa:
+                try:
+                    estado_ui = {"ultimo_p": -5} 
 
-                class InterceptorLogger:
-                    def debug(self, msg): pass 
-                    def info(self, msg): pass
-                    def warning(self, msg): pass
-                    def error(self, msg): actualizar_terminal(f"ERR: {msg}")
+                    def hook_progreso(d):
+                        if d['status'] == 'downloading':
+                            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                            p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
+                            try:
+                                p = float(p_str)
+                                if p - estado_ui["ultimo_p"] >= 5:
+                                    progress_bar.value = p / 100.0
+                                    actualizar_terminal(f"Descargando: {p_str}%")
+                                    estado_ui["ultimo_p"] = p
+                            except ValueError: pass
+                            
+                        elif d['status'] == 'finished':
+                            progress_bar.value = None
+                            actualizar_terminal("Ensamblando Video MP4 Universal...")
+                            page.update()
 
-                # LE QUITAMOS LA MÁSCARA AGRESIVA A YOUTUBE PARA EVITAR EL 403
-                opts = {
-                    'quiet': True, 
-                    'progress_hooks': [hook_progreso],
-                    'logger': InterceptorLogger(),
-                    'nocheckcertificate': True,
-                    'geo_bypass': True,
-                    'extractor_args': {
-                        'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} 
+                    class InterceptorLogger:
+                        def debug(self, msg): pass 
+                        def info(self, msg): pass
+                        def warning(self, msg): pass
+                        def error(self, msg): pass # Silenciamos los errores de la librería para manejarlos nosotros
+
+                    opts = {
+                        'quiet': True, 
+                        'progress_hooks': [hook_progreso],
+                        'logger': InterceptorLogger(),
+                        'nocheckcertificate': True,
+                        'geo_bypass': True,
+                        'extractor_args': {
+                            'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} 
+                        }
                     }
-                }
 
-                # LA REGLA DE ORO: Solo descargar piezas compatibles con MP4
-                if "Ligero" in seleccion:
-                    opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Ligero).%(ext)s')
-                    opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
-                    opts['merge_output_format'] = 'mp4' 
-                else:
-                    opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
-                    # Obligamos a que el video sea MP4 y el audio sea M4A. Así FFMPEG jamás falla.
-                    opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
-                    opts['merge_output_format'] = 'mp4'
+                    if "Ligero" in seleccion:
+                        opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Ligero).%(ext)s')
+                        opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+                        opts['merge_output_format'] = 'mp4' 
+                    else:
+                        opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
+                        opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+                        opts['merge_output_format'] = 'mp4'
 
-                if os.path.exists(RUTA_FFMPEG):
-                    opts['ffmpeg_location'] = RUTA_FFMPEG
+                    if os.path.exists(RUTA_FFMPEG):
+                        opts['ffmpeg_location'] = RUTA_FFMPEG
 
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    ydl.download([url])
-                
-                progress_bar.value = 1.0
-                actualizar_terminal(f"✅ ¡Video Guardado en Descargas!")
-                time.sleep(3)
-                txt_url.value = ""
-                actualizar_terminal("✅ Listo para un nuevo enlace.")
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        ydl.download([url])
+                    
+                    descarga_exitosa = True
+                    progress_bar.value = 1.0
+                    actualizar_terminal(f"✅ ¡Video Guardado en Descargas!")
+                    time.sleep(3)
+                    txt_url.value = ""
+                    actualizar_terminal("✅ Listo para un nuevo enlace.")
 
-            except Exception as ex:
-                actualizar_terminal(f"❌ Error al descargar (Asegúrate que el video sea público).")
-                
-            finally:
-                resetear_interfaz()
+                except Exception as ex:
+                    error_str = str(ex)
+                    if "403" in error_str or "Forbidden" in error_str:
+                        if intento_actual < max_intentos:
+                            actualizar_terminal(f"⚠️ YouTube bloqueó el acceso (Seguridad Anti-Bot).")
+                            actualizar_terminal(f"🔄 Aplicando Bypass Invisible... (Intento {intento_actual}/{max_intentos})")
+                            time.sleep(2) # Pausa táctica antes de atacar de nuevo
+                            intento_actual += 1
+                            progress_bar.value = 0.0
+                            page.update()
+                        else:
+                            actualizar_terminal("❌ YouTube está demasiado estricto hoy. Intenta más tarde.")
+                            break
+                    else:
+                        actualizar_terminal(f"❌ Error al descargar. Verifica que el enlace sea público.")
+                        break
+
+            # Pase lo que pase en el bucle, liberamos la interfaz al final
+            resetear_interfaz()
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
 
