@@ -2,11 +2,11 @@ import os
 import sys
 import re
 import time
+import threading
 import urllib.request
 import flet as ft
 import yt_dlp
 
-# --- EL SILENCIADOR DE WINDOWS ---
 if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
@@ -33,7 +33,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 CachyVIDEOS 🎬"
+    page.title = "🎬 CachyVIDEOS🗿"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -41,6 +41,20 @@ def main(page: ft.Page):
     page.padding = 20
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+
+    # --- EL DESFIBRILADOR GRÁFICO (TRUCO SUCIO) ---
+    # Este pixel invisible se actualizará constantemente para evitar que Windows duerma la ventana
+    pixel_fantasma = ft.Text("", size=1) 
+    page.add(pixel_fantasma)
+
+    def latido_cardiaco():
+        while True:
+            time.sleep(0.5)
+            pixel_fantasma.value = " " if pixel_fantasma.value == "" else ""
+            page.update()
+
+    # Iniciamos el latido en las sombras
+    threading.Thread(target=latido_cardiaco, daemon=True).start()
 
     lbl_titulo = ft.Text("🎬 CachyVIDEOS 🎬", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador de Video Universal", size=12, color=COLOR_TEXT_DIM)
@@ -82,10 +96,8 @@ def main(page: ft.Page):
         terminal_texto.value += f"> {texto}\n"
         page.update()
 
-    # --- LA MAGIA CONTRA EL TARTAMUDEO ---
     def actualizar_progreso_fluido(p_str, p_float):
         lineas = terminal_texto.value.strip().split('\n')
-        # Si la última línea ya dice "Descargando", la reemplazamos (Cero lag)
         if lineas and "Descargando:" in lineas[-1]:
             lineas[-1] = f"> Descargando: {p_str}%"
             terminal_texto.value = "\n".join(lineas) + "\n"
@@ -161,7 +173,6 @@ def main(page: ft.Page):
                             try:
                                 p = float(p_str)
                                 ahora = time.time()
-                                # EL CRONÓMETRO: Solo actualiza la pantalla cada 0.3 segundos
                                 if ahora - estado_ui["ultimo_tiempo"] >= 0.3:
                                     actualizar_progreso_fluido(p_str, p / 100.0)
                                     estado_ui["ultimo_tiempo"] = ahora
@@ -224,8 +235,6 @@ def main(page: ft.Page):
             resetear_interfaz()
 
         page.run_thread(trabajo_descarga)
-
-    btn_descargar.on_click = ejecutar_descarga
 
     card = ft.Container(
         content=ft.Column(
