@@ -3,6 +3,7 @@ import sys
 import re
 import time
 import threading
+import urllib.request
 import flet as ft
 import yt_dlp
 
@@ -16,12 +17,13 @@ COLOR_TERM_BG = "#000000"
 COLOR_TEXT_DIM = "#8f9bb3"
 COLOR_BOTON_OFF = "#2a2e45"
 
-# RUTA ABSOLUTA PARA FFMPEG
+# RUTA ABSOLUTA INTELIGENTE
 if getattr(sys, 'frozen', False):
     DIRECTORIO_APP = os.path.dirname(sys.executable)
 else:
     DIRECTORIO_APP = os.path.dirname(os.path.abspath(__file__))
 
+# Definimos dónde guardaremos nuestro propio motor HD
 NOMBRE_FFMPEG = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
 RUTA_FFMPEG = os.path.join(DIRECTORIO_APP, NOMBRE_FFMPEG)
 
@@ -43,13 +45,10 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    pizarra = {"texto": "", "porcentaje": 0.0, "impreso": ""}
-
     # --- ELEMENTOS DE UI ---
     lbl_titulo = ft.Text("💻 Cachy Media🗿", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador PRO (Sin Anuncios)", size=12, color=COLOR_TEXT_DIM)
     
-    # EMOJIS! 100% Inmunes a crasheos porque son puro texto.
     iconos_redes = ft.Text(
         "▶️ YouTube  |  📘 Facebook  |  📸 Instagram  |  🎵 TikTok  |  ✖️ X",
         size=11, color=COLOR_TEXT_DIM, weight="bold"
@@ -81,29 +80,32 @@ def main(page: ft.Page):
     terminal_texto = ft.TextField(
         multiline=True, read_only=True, value="[cachy@media]~ $ Sistema seguro iniciado.\n",
         bgcolor=COLOR_TERM_BG, color=COLOR_GREEN, border_color="transparent",
-        border_radius=10, text_size=10, width=380, height=100
+        border_radius=10, text_size=10, width=380, height=120
     )
 
-    # --- EL MARCAPASOS ---
-    def marcapasos():
-        while True:
-            if pizarra["texto"] != "" and pizarra["texto"] != pizarra["impreso"]:
-                terminal_texto.value += f"> {pizarra['texto']}\n"
-                pizarra["impreso"] = pizarra["texto"]
-                page.update()
-            
-            if progress_bar.value != pizarra["porcentaje"]:
-                progress_bar.value = pizarra["porcentaje"]
-                page.update()
-            
-            time.sleep(0.2)
+    # --- COMUNICACIÓN FLUIDA (La Pizarra) ---
+    def actualizar_terminal(texto):
+        terminal_texto.value += f"> {texto}\n"
+        page.update()
 
-    threading.Thread(target=marcapasos, daemon=True).start()
+    # --- AUTO-INSTALADOR DE MOTOR HD ---
+    def instalar_motor_hd():
+        if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
+            actualizar_terminal("⚙️ Motor HD no encontrado. Instalando automáticamente (Esto tomará unos segundos)...")
+            try:
+                # Descarga un ffmpeg pequeñito y directo de Github
+                url_ffmpeg = "https://github.com/imageio/imageio-binaries/raw/master/ffmpeg/ffmpeg-win32-v4.2.2.exe"
+                urllib.request.urlretrieve(url_ffmpeg, RUTA_FFMPEG)
+                actualizar_terminal("✅ Motor HD instalado con éxito. Calidad 4K/1080p Desbloqueada para siempre.")
+            except Exception as e:
+                actualizar_terminal(f"❌ Error al instalar el Motor HD. Calidad limitada. Detalle: {e}")
+        elif os.path.exists(RUTA_FFMPEG):
+            actualizar_terminal("✅ Motor HD detectado. Listo para máxima calidad.")
 
-    # --- FUNCIONES ---
-    def anotar(texto):
-        pizarra["texto"] = texto
+    # Lanzamos la verificación del motor en cuanto abre la app
+    threading.Thread(target=instalar_motor_hd, daemon=True).start()
 
+    # --- FUNCIONES DE DESCARGA ---
     def validar_input(e):
         if len(txt_url.value.strip()) > 0:
             btn_descargar.disabled = False
@@ -123,8 +125,8 @@ def main(page: ft.Page):
         validar_input(None)
         txt_url.disabled = False
         dd_tipo.disabled = False
-        pizarra["porcentaje"] = 0.0
-        anotar("Listo para un nuevo enlace.")
+        progress_bar.value = 0.0
+        actualizar_terminal("Listo para un nuevo enlace.")
 
     def ejecutar_descarga(e):
         url = txt_url.value.strip()
@@ -136,29 +138,38 @@ def main(page: ft.Page):
         txt_url.disabled = True
         dd_tipo.disabled = True
         terminal_texto.value = ""
-        pizarra["porcentaje"] = 0.0
+        progress_bar.value = 0.0
         
-        anotar("Camuflando conexión como Dispositivo Móvil...")
+        actualizar_terminal("Conectando con la plataforma...")
 
         def trabajo_descarga():
+            estado_ui = {"ultimo_p": -10} 
+
             def hook_progreso(d):
                 if d['status'] == 'downloading':
                     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
                     p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
                     try:
                         p = float(p_str)
-                        pizarra["porcentaje"] = p / 100.0
-                        anotar(f"Descargando: {p_str}%")
+                        # Solo actualiza cada 5% para no ahogar a Windows
+                        if p - estado_ui["ultimo_p"] >= 5:
+                            progress_bar.value = p / 100.0
+                            actualizar_terminal(f"Descargando: {p_str}%")
+                            estado_ui["ultimo_p"] = p
                     except ValueError: pass
+                    
+                    # EL TRUCO MAGICO: Liberar el embudo de Python para que Flet dibuje
+                    time.sleep(0.01) 
+                    
                 elif d['status'] == 'finished':
-                    pizarra["porcentaje"] = None
-                    anotar("Procesando archivo final (No cierre la app)...")
+                    progress_bar.value = None
+                    actualizar_terminal("Procesando archivo final (Fusionando HD)...")
 
             class InterceptorLogger:
                 def debug(self, msg): pass 
                 def info(self, msg): pass
                 def warning(self, msg): pass
-                def error(self, msg): anotar(f"ERR: {msg}")
+                def error(self, msg): actualizar_terminal(f"ERR: {msg}")
 
             # LA MÁSCARA ANTI-BLOQUEOS
             opts = {
@@ -188,23 +199,21 @@ def main(page: ft.Page):
                 opts['format'] = 'bestvideo+bestaudio/best'
                 opts['merge_output_format'] = 'mp4'
 
+            # Vinculamos nuestro Motor Autónomo
             if os.path.exists(RUTA_FFMPEG):
                 opts['ffmpeg_location'] = RUTA_FFMPEG
-                anotar("Motor FFmpeg listo. Procesamiento pesado habilitado.")
-            else:
-                anotar("ADVERTENCIA: FFmpeg no encontrado. Calidad reducida.")
 
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([url])
                 
-                pizarra["porcentaje"] = 1.0
-                anotar(f"✅ ¡Completado! Guardado en Descargas.")
+                progress_bar.value = 1.0
+                actualizar_terminal(f"✅ ¡Completado! Guardado en Descargas.")
                 reiniciar_ui()
 
             except Exception as ex:
-                anotar(f"❌ Enlace bloqueado o inválido.")
-                pizarra["porcentaje"] = 0.0
+                actualizar_terminal(f"❌ Enlace bloqueado o inválido.")
+                progress_bar.value = 0.0
                 txt_url.disabled = False
                 validar_input(None)
                 dd_tipo.disabled = False
