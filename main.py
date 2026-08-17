@@ -3,9 +3,13 @@ import sys
 import re
 import time
 import threading
-import urllib.request
 import flet as ft
 import yt_dlp
+
+# --- EL SILENCIADOR DE WINDOWS (Arregla el bug de la ventana) ---
+if sys.platform == "win32" and getattr(sys, 'frozen', False):
+    sys.stdout = open(os.devnull, 'w')
+    sys.stderr = open(os.devnull, 'w')
 
 # --- COLORES CACHYOS ---
 COLOR_BG = "#0d1017"       
@@ -23,7 +27,6 @@ if getattr(sys, 'frozen', False):
 else:
     DIRECTORIO_APP = os.path.dirname(os.path.abspath(__file__))
 
-# Definimos dónde guardaremos nuestro propio motor HD
 NOMBRE_FFMPEG = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
 RUTA_FFMPEG = os.path.join(DIRECTORIO_APP, NOMBRE_FFMPEG)
 
@@ -83,29 +86,11 @@ def main(page: ft.Page):
         border_radius=10, text_size=10, width=380, height=120
     )
 
-    # --- COMUNICACIÓN FLUIDA (La Pizarra) ---
+    # --- COMUNICACIÓN FLUIDA ---
     def actualizar_terminal(texto):
         terminal_texto.value += f"> {texto}\n"
         page.update()
 
-    # --- AUTO-INSTALADOR DE MOTOR HD ---
-    def instalar_motor_hd():
-        if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
-            actualizar_terminal("⚙️ Motor HD no encontrado. Instalando automáticamente (Esto tomará unos segundos)...")
-            try:
-                # Descarga un ffmpeg pequeñito y directo de Github
-                url_ffmpeg = "https://github.com/imageio/imageio-binaries/raw/master/ffmpeg/ffmpeg-win32-v4.2.2.exe"
-                urllib.request.urlretrieve(url_ffmpeg, RUTA_FFMPEG)
-                actualizar_terminal("✅ Motor HD instalado con éxito. Calidad 4K/1080p Desbloqueada para siempre.")
-            except Exception as e:
-                actualizar_terminal(f"❌ Error al instalar el Motor HD. Calidad limitada. Detalle: {e}")
-        elif os.path.exists(RUTA_FFMPEG):
-            actualizar_terminal("✅ Motor HD detectado. Listo para máxima calidad.")
-
-    # Lanzamos la verificación del motor en cuanto abre la app
-    threading.Thread(target=instalar_motor_hd, daemon=True).start()
-
-    # --- FUNCIONES DE DESCARGA ---
     def validar_input(e):
         if len(txt_url.value.strip()) > 0:
             btn_descargar.disabled = False
@@ -143,27 +128,18 @@ def main(page: ft.Page):
         actualizar_terminal("Conectando con la plataforma...")
 
         def trabajo_descarga():
-            estado_ui = {"ultimo_p": -10} 
-
             def hook_progreso(d):
                 if d['status'] == 'downloading':
                     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
                     p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
                     try:
-                        p = float(p_str)
-                        # Solo actualiza cada 5% para no ahogar a Windows
-                        if p - estado_ui["ultimo_p"] >= 5:
-                            progress_bar.value = p / 100.0
-                            actualizar_terminal(f"Descargando: {p_str}%")
-                            estado_ui["ultimo_p"] = p
+                        progress_bar.value = float(p_str) / 100.0
+                        page.update()
                     except ValueError: pass
-                    
-                    # EL TRUCO MAGICO: Liberar el embudo de Python para que Flet dibuje
-                    time.sleep(0.01) 
-                    
                 elif d['status'] == 'finished':
                     progress_bar.value = None
-                    actualizar_terminal("Procesando archivo final (Fusionando HD)...")
+                    actualizar_terminal("Procesando archivo final (Fusionando Calidad)...")
+                    page.update()
 
             class InterceptorLogger:
                 def debug(self, msg): pass 
@@ -173,6 +149,7 @@ def main(page: ft.Page):
 
             # LA MÁSCARA ANTI-BLOQUEOS
             opts = {
+                'quiet': True, # Esto evita que Windows sature la memoria
                 'progress_hooks': [hook_progreso],
                 'logger': InterceptorLogger(),
                 'nocheckcertificate': True,
@@ -199,9 +176,12 @@ def main(page: ft.Page):
                 opts['format'] = 'bestvideo+bestaudio/best'
                 opts['merge_output_format'] = 'mp4'
 
-            # Vinculamos nuestro Motor Autónomo
+            # VINCULACIÓN CON EL MOTOR
             if os.path.exists(RUTA_FFMPEG):
                 opts['ffmpeg_location'] = RUTA_FFMPEG
+                actualizar_terminal("Motor HD detectado.")
+            else:
+                actualizar_terminal("ADVERTENCIA: Motor HD no instalado. Calidad reducida.")
 
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
