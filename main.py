@@ -11,6 +11,7 @@ COLOR_CYAN = "#00f2fe"     # Acento principal
 COLOR_GREEN = "#50fa7b"    # Éxito / Terminal
 COLOR_RED = "#ff5555"      # Errores
 COLOR_TERM_BG = "#000000"  # Fondo de la mini-terminal
+COLOR_TEXT = "#c9d1d9"     # <--- ¡ESTE FUE EL QUE SE ME OLVIDÓ! xd
 
 # --- DETECCIÓN DE SISTEMA ---
 DIRECTORIO_APP = os.path.dirname(os.path.abspath(sys.argv[0]))
