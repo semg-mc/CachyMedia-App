@@ -33,7 +33,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 CachyVIDEOS🗿"
+    page.title = "🎬 CachyVIDEOS 🎬"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
