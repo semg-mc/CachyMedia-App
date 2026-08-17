@@ -12,7 +12,6 @@ if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
 
-# --- COLORES CACHYOS ---
 COLOR_BG = "#0d1017"       
 COLOR_CARD = "#161b22"     
 COLOR_CYAN = "#00f2fe"     
@@ -22,7 +21,6 @@ COLOR_TERM_BG = "#000000"
 COLOR_TEXT_DIM = "#8f9bb3"
 COLOR_BOTON_OFF = "#2a2e45"
 
-# --- LA MAGIA DE APPDATA ---
 CARPETA_APPDATA = os.path.join(os.getenv('APPDATA'), 'CachyMedia')
 os.makedirs(CARPETA_APPDATA, exist_ok=True)
 RUTA_FFMPEG = os.path.join(CARPETA_APPDATA, 'ffmpeg.exe')
@@ -45,8 +43,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    # --- ELEMENTOS DE UI ---
-    lbl_titulo = ft.Text("▶️ Cachy Media 🎵", size=26, weight="bold", color=COLOR_CYAN)
+    lbl_titulo = ft.Text("💻 Cachy Media🗿", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador PRO (Sin Anuncios)", size=12, color=COLOR_TEXT_DIM)
     
     iconos_redes = ft.Text(
@@ -87,7 +84,6 @@ def main(page: ft.Page):
         terminal_texto.value += f"> {texto}\n"
         page.update()
 
-    # --- AUTO-INSTALADOR EN APPDATA ---
     def verificar_motor():
         if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("⚙️ Configurando el núcleo por primera vez...")
@@ -102,18 +98,12 @@ def main(page: ft.Page):
 
     threading.Thread(target=verificar_motor, daemon=True).start()
 
-    # --- EL REINICIADOR BLINDADO DE INTERFAZ ---
-    def resetear_interfaz(exito=True):
-        if exito:
-            time.sleep(3)
-            txt_url.value = ""
-            actualizar_terminal("✅ Listo para un nuevo enlace.")
-        
+    def resetear_interfaz():
+        # ESTA FUNCIÓN ES EL BLINDAJE DEL BOTÓN
         txt_url.disabled = False
         dd_tipo.disabled = False
         progress_bar.value = 0.0
         
-        # Forzamos la comprobación del botón (El fix del Botón Zombie)
         if len(txt_url.value.strip()) > 0:
             btn_descargar.disabled = False
             btn_descargar.bgcolor = COLOR_CYAN
@@ -126,8 +116,7 @@ def main(page: ft.Page):
         page.update()
 
     def validar_input(e):
-        # Esta función solo se llama cuando escribes en la caja
-        resetear_interfaz(exito=False)
+        resetear_interfaz()
 
     txt_url.on_change = validar_input
 
@@ -135,7 +124,6 @@ def main(page: ft.Page):
         url = txt_url.value.strip()
         seleccion = dd_tipo.value
         
-        # Bloqueo total visual
         btn_descargar.disabled = True
         btn_descargar.bgcolor = COLOR_BOTON_OFF
         btn_descargar.color = COLOR_TEXT_DIM
@@ -145,74 +133,79 @@ def main(page: ft.Page):
         progress_bar.value = 0.0
         page.update()
         
-        actualizar_terminal("Estableciendo conexión libre de restricciones...")
+        actualizar_terminal("Estableciendo conexión...")
 
         def trabajo_descarga():
-            estado_ui = {"ultimo_p": -5} 
-
-            def hook_progreso(d):
-                if d['status'] == 'downloading':
-                    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-                    p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
-                    try:
-                        p = float(p_str)
-                        if p - estado_ui["ultimo_p"] >= 5:
-                            progress_bar.value = p / 100.0
-                            actualizar_terminal(f"Descargando: {p_str}%")
-                            estado_ui["ultimo_p"] = p
-                    except ValueError: pass
-                    
-                elif d['status'] == 'finished':
-                    progress_bar.value = None
-                    actualizar_terminal("Fusionando audio y video en alta calidad...")
-                    page.update()
-
-            class InterceptorLogger:
-                def debug(self, msg): pass 
-                def info(self, msg): pass
-                def warning(self, msg): pass
-                def error(self, msg): actualizar_terminal(f"ERR: {msg}")
-
-            opts = {
-                'quiet': True, 
-                'progress_hooks': [hook_progreso],
-                'logger': InterceptorLogger(),
-                'nocheckcertificate': True,
-                'geo_bypass': True,
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            }
-
-            # EL ARREGLO DE FORMATOS: Forzamos compatibilidad absoluta MP4
-            if "Audio" in seleccion:
-                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Audio).%(ext)s')
-                opts['format'] = 'bestaudio/best'
-                opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
-            elif "SD" in seleccion:
-                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (SD).%(ext)s')
-                opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
-                opts['merge_output_format'] = 'mp4'
-            else: 
-                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
-                # Aquí está la magia: exigimos video en mp4 y audio en m4a. Así nunca hay errores de fusión.
-                opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
-                opts['merge_output_format'] = 'mp4'
-
-            if os.path.exists(RUTA_FFMPEG):
-                opts['ffmpeg_location'] = RUTA_FFMPEG
-
             try:
+                estado_ui = {"ultimo_p": -5} 
+
+                def hook_progreso(d):
+                    if d['status'] == 'downloading':
+                        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                        p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
+                        try:
+                            p = float(p_str)
+                            if p - estado_ui["ultimo_p"] >= 5:
+                                progress_bar.value = p / 100.0
+                                actualizar_terminal(f"Descargando: {p_str}%")
+                                estado_ui["ultimo_p"] = p
+                        except ValueError: pass
+                        
+                    elif d['status'] == 'finished':
+                        progress_bar.value = None
+                        actualizar_terminal("Fusionando calidad suprema...")
+                        page.update()
+
+                class InterceptorLogger:
+                    def debug(self, msg): pass 
+                    def info(self, msg): pass
+                    def warning(self, msg): pass
+                    def error(self, msg): actualizar_terminal(f"ERR: {msg}")
+
+                # AJUSTE ANTI-403: Relajamos YT, Mantenemos TikTok
+                opts = {
+                    'quiet': True, 
+                    'progress_hooks': [hook_progreso],
+                    'logger': InterceptorLogger(),
+                    'nocheckcertificate': True,
+                    'geo_bypass': True,
+                    'extractor_args': {
+                        'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} 
+                    }
+                }
+
+                # MKV ES EL REY: Evita que crashee al unir audios raros
+                if "Audio" in seleccion:
+                    opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Audio).%(ext)s')
+                    opts['format'] = 'bestaudio/best'
+                    opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
+                elif "SD" in seleccion:
+                    opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (SD).%(ext)s')
+                    opts['format'] = 'bestvideo[height<=480]+bestaudio/best'
+                    opts['merge_output_format'] = 'mkv'
+                else: 
+                    opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
+                    opts['format'] = 'bestvideo+bestaudio/best'
+                    opts['merge_output_format'] = 'mkv'
+
+                if os.path.exists(RUTA_FFMPEG):
+                    opts['ffmpeg_location'] = RUTA_FFMPEG
+
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([url])
                 
                 progress_bar.value = 1.0
                 actualizar_terminal(f"✅ ¡Éxito! Guardado en Descargas.")
-                resetear_interfaz(exito=True)
+                time.sleep(3)
+                txt_url.value = ""
+                actualizar_terminal("✅ Listo para un nuevo enlace.")
 
             except Exception as ex:
-                actualizar_terminal(f"❌ Error en la descarga. Interfaz desbloqueada.")
-                resetear_interfaz(exito=False)
+                actualizar_terminal(f"❌ Error en la descarga (Verifica que no sea un link privado).")
+                
+            finally:
+                # PASE LO QUE PASE, EL BOTÓN SE DESBLOQUEA AQUÍ
+                resetear_interfaz()
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
 
