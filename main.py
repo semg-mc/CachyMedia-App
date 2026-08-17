@@ -131,10 +131,9 @@ def main(page: ft.Page):
                             estado_ui["ultimo_p"] = p
                     except ValueError: pass
                 elif d['status'] == 'finished':
-                    escribir_terminal("Descarga terminada. Uniendo audio y video (Espere)...", COLOR_CYAN)
+                    escribir_terminal("Descarga terminada. Uniendo archivos (Espere)...", COLOR_CYAN)
 
             opts = {
-                'outtmpl': os.path.join(RUTA_DESCARGAS, '%(title).100s.%(ext)s'),
                 'progress_hooks': [hook_progreso],
                 'logger': InterceptorLogger(),
                 'nocheckcertificate': True,
@@ -142,10 +141,13 @@ def main(page: ft.Page):
                 'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'web']}}
             }
 
+            # LÓGICA DE NOMBRES Y FORMATOS SEPARADA
             if "Audio" in seleccion:
+                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Audio).%(ext)s')
                 opts['format'] = 'bestaudio/best'
                 opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
             else:
+                opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Video).%(ext)s')
                 # Forzamos MP4 universal para evitar videos corruptos o sin sonido
                 opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
                 opts['postprocessors'] = [{'key': 'FFmpegVideoConvertor', 'preferedformat': 'mp4'}]
