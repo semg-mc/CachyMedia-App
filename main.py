@@ -34,7 +34,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "💻 Cachy Media🗿"
+    page.title = "▶️ Cachy Media ▶️"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -226,7 +226,7 @@ def main(page: ft.Page):
                 btn_descargar,
                 ft.Container(height=15),
                 terminal_texto,
-                ft.Text("Desarrollado por CachyMedia © 2026", size=10, color=COLOR_TEXT_DIM)
+                ft.Text("Desarrollado por semg_mc © 2026", size=10, color=COLOR_TEXT_DIM)
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=5
