@@ -64,7 +64,7 @@ def main(page: ft.Page):
     terminal_lista = ft.ListView(expand=True, spacing=2, auto_scroll=True)
     caja_terminal = ft.Container(
         content=terminal_lista, bgcolor=COLOR_TERM_BG, border_radius=5, 
-        padding=10, height=200, border=ft.border.all(1, COLOR_CYAN)
+        padding=10, height=200
     )
 
     # Variables globales para guardar los datos del video analizado
