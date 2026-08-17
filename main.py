@@ -4,7 +4,6 @@ import re
 import time
 import threading
 import urllib.request
-import zipfile
 import flet as ft
 import yt_dlp
 
@@ -23,7 +22,7 @@ COLOR_TERM_BG = "#000000"
 COLOR_TEXT_DIM = "#8f9bb3"
 COLOR_BOTON_OFF = "#2a2e45"
 
-# --- LA MAGIA DE APPDATA (Permisos Absolutos) ---
+# --- LA MAGIA DE APPDATA ---
 CARPETA_APPDATA = os.path.join(os.getenv('APPDATA'), 'CachyMedia')
 os.makedirs(CARPETA_APPDATA, exist_ok=True)
 RUTA_FFMPEG = os.path.join(CARPETA_APPDATA, 'ffmpeg.exe')
@@ -47,7 +46,7 @@ def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
     # --- ELEMENTOS DE UI ---
-    lbl_titulo = ft.Text("💻 Cachy Media🗿", size=26, weight="bold", color=COLOR_CYAN)
+    lbl_titulo = ft.Text("▶️ Cachy Media 🎵", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador PRO (Sin Anuncios)", size=12, color=COLOR_TEXT_DIM)
     
     iconos_redes = ft.Text(
@@ -93,7 +92,6 @@ def main(page: ft.Page):
         if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("⚙️ Configurando el núcleo por primera vez...")
             try:
-                # Descargamos una versión ultra-ligera y directa
                 url = "https://github.com/imageio/imageio-binaries/raw/master/ffmpeg/ffmpeg-win32-v4.2.2.exe"
                 urllib.request.urlretrieve(url, RUTA_FFMPEG)
                 actualizar_terminal("✅ Núcleo HD instalado en AppData. ¡1080p+ Desbloqueado!")
@@ -104,7 +102,18 @@ def main(page: ft.Page):
 
     threading.Thread(target=verificar_motor, daemon=True).start()
 
-    def validar_input(e):
+    # --- EL REINICIADOR BLINDADO DE INTERFAZ ---
+    def resetear_interfaz(exito=True):
+        if exito:
+            time.sleep(3)
+            txt_url.value = ""
+            actualizar_terminal("✅ Listo para un nuevo enlace.")
+        
+        txt_url.disabled = False
+        dd_tipo.disabled = False
+        progress_bar.value = 0.0
+        
+        # Forzamos la comprobación del botón (El fix del Botón Zombie)
         if len(txt_url.value.strip()) > 0:
             btn_descargar.disabled = False
             btn_descargar.bgcolor = COLOR_CYAN
@@ -113,7 +122,12 @@ def main(page: ft.Page):
             btn_descargar.disabled = True
             btn_descargar.bgcolor = COLOR_BOTON_OFF
             btn_descargar.color = COLOR_TEXT_DIM
+            
         page.update()
+
+    def validar_input(e):
+        # Esta función solo se llama cuando escribes en la caja
+        resetear_interfaz(exito=False)
 
     txt_url.on_change = validar_input
 
@@ -121,11 +135,15 @@ def main(page: ft.Page):
         url = txt_url.value.strip()
         seleccion = dd_tipo.value
         
+        # Bloqueo total visual
         btn_descargar.disabled = True
+        btn_descargar.bgcolor = COLOR_BOTON_OFF
+        btn_descargar.color = COLOR_TEXT_DIM
         txt_url.disabled = True
         dd_tipo.disabled = True
         terminal_texto.value = ""
         progress_bar.value = 0.0
+        page.update()
         
         actualizar_terminal("Estableciendo conexión libre de restricciones...")
 
@@ -166,20 +184,21 @@ def main(page: ft.Page):
                 }
             }
 
+            # EL ARREGLO DE FORMATOS: Forzamos compatibilidad absoluta MP4
             if "Audio" in seleccion:
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Audio).%(ext)s')
                 opts['format'] = 'bestaudio/best'
                 opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
             elif "SD" in seleccion:
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (SD).%(ext)s')
-                opts['format'] = 'bestvideo[height<=480]+bestaudio/best'
+                opts['format'] = 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
                 opts['merge_output_format'] = 'mp4'
             else: 
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (HD).%(ext)s')
-                opts['format'] = 'bestvideo+bestaudio/best'
+                # Aquí está la magia: exigimos video en mp4 y audio en m4a. Así nunca hay errores de fusión.
+                opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
                 opts['merge_output_format'] = 'mp4'
 
-            # CONEXIÓN DIRECTA CON APPDATA
             if os.path.exists(RUTA_FFMPEG):
                 opts['ffmpeg_location'] = RUTA_FFMPEG
 
@@ -189,20 +208,11 @@ def main(page: ft.Page):
                 
                 progress_bar.value = 1.0
                 actualizar_terminal(f"✅ ¡Éxito! Guardado en Descargas.")
-                time.sleep(3)
-                txt_url.value = ""
-                validar_input(None)
-                txt_url.disabled = False
-                dd_tipo.disabled = False
-                progress_bar.value = 0.0
-                actualizar_terminal("Listo para un nuevo enlace.")
+                resetear_interfaz(exito=True)
 
             except Exception as ex:
-                actualizar_terminal(f"❌ Error en la descarga.")
-                progress_bar.value = 0.0
-                txt_url.disabled = False
-                validar_input(None)
-                dd_tipo.disabled = False
+                actualizar_terminal(f"❌ Error en la descarga. Interfaz desbloqueada.")
+                resetear_interfaz(exito=False)
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
 
