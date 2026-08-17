@@ -3,10 +3,12 @@ import sys
 import re
 import time
 import threading
+import urllib.request
+import zipfile
 import flet as ft
 import yt_dlp
 
-# --- EL SILENCIADOR DE WINDOWS (Arregla el bug de la ventana) ---
+# --- EL SILENCIADOR DE WINDOWS ---
 if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
@@ -21,14 +23,10 @@ COLOR_TERM_BG = "#000000"
 COLOR_TEXT_DIM = "#8f9bb3"
 COLOR_BOTON_OFF = "#2a2e45"
 
-# RUTA ABSOLUTA INTELIGENTE
-if getattr(sys, 'frozen', False):
-    DIRECTORIO_APP = os.path.dirname(sys.executable)
-else:
-    DIRECTORIO_APP = os.path.dirname(os.path.abspath(__file__))
-
-NOMBRE_FFMPEG = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
-RUTA_FFMPEG = os.path.join(DIRECTORIO_APP, NOMBRE_FFMPEG)
+# --- LA MAGIA DE APPDATA (Permisos Absolutos) ---
+CARPETA_APPDATA = os.path.join(os.getenv('APPDATA'), 'CachyMedia')
+os.makedirs(CARPETA_APPDATA, exist_ok=True)
+RUTA_FFMPEG = os.path.join(CARPETA_APPDATA, 'ffmpeg.exe')
 
 def obtener_ruta_descargas():
     home = os.path.expanduser("~")
@@ -81,15 +79,30 @@ def main(page: ft.Page):
     progress_bar = ft.ProgressBar(width=380, color=COLOR_CYAN, bgcolor=COLOR_TERM_BG, value=0.0)
 
     terminal_texto = ft.TextField(
-        multiline=True, read_only=True, value="[cachy@media]~ $ Sistema seguro iniciado.\n",
+        multiline=True, read_only=True, value="[cachy@media]~ $ Sistema iniciado.\n",
         bgcolor=COLOR_TERM_BG, color=COLOR_GREEN, border_color="transparent",
         border_radius=10, text_size=10, width=380, height=120
     )
 
-    # --- COMUNICACIÓN FLUIDA ---
     def actualizar_terminal(texto):
         terminal_texto.value += f"> {texto}\n"
         page.update()
+
+    # --- AUTO-INSTALADOR EN APPDATA ---
+    def verificar_motor():
+        if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
+            actualizar_terminal("⚙️ Configurando el núcleo por primera vez...")
+            try:
+                # Descargamos una versión ultra-ligera y directa
+                url = "https://github.com/imageio/imageio-binaries/raw/master/ffmpeg/ffmpeg-win32-v4.2.2.exe"
+                urllib.request.urlretrieve(url, RUTA_FFMPEG)
+                actualizar_terminal("✅ Núcleo HD instalado en AppData. ¡1080p+ Desbloqueado!")
+            except Exception as e:
+                actualizar_terminal(f"❌ Error instalando el núcleo: {e}")
+        elif os.path.exists(RUTA_FFMPEG):
+            actualizar_terminal("✅ Núcleo HD operativo.")
+
+    threading.Thread(target=verificar_motor, daemon=True).start()
 
     def validar_input(e):
         if len(txt_url.value.strip()) > 0:
@@ -104,41 +117,36 @@ def main(page: ft.Page):
 
     txt_url.on_change = validar_input
 
-    def reiniciar_ui():
-        time.sleep(4)
-        txt_url.value = ""
-        validar_input(None)
-        txt_url.disabled = False
-        dd_tipo.disabled = False
-        progress_bar.value = 0.0
-        actualizar_terminal("Listo para un nuevo enlace.")
-
     def ejecutar_descarga(e):
         url = txt_url.value.strip()
         seleccion = dd_tipo.value
         
         btn_descargar.disabled = True
-        btn_descargar.bgcolor = COLOR_BOTON_OFF
-        btn_descargar.color = COLOR_TEXT_DIM
         txt_url.disabled = True
         dd_tipo.disabled = True
         terminal_texto.value = ""
         progress_bar.value = 0.0
         
-        actualizar_terminal("Conectando con la plataforma...")
+        actualizar_terminal("Estableciendo conexión libre de restricciones...")
 
         def trabajo_descarga():
+            estado_ui = {"ultimo_p": -5} 
+
             def hook_progreso(d):
                 if d['status'] == 'downloading':
                     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
                     p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
                     try:
-                        progress_bar.value = float(p_str) / 100.0
-                        page.update()
+                        p = float(p_str)
+                        if p - estado_ui["ultimo_p"] >= 5:
+                            progress_bar.value = p / 100.0
+                            actualizar_terminal(f"Descargando: {p_str}%")
+                            estado_ui["ultimo_p"] = p
                     except ValueError: pass
+                    
                 elif d['status'] == 'finished':
                     progress_bar.value = None
-                    actualizar_terminal("Procesando archivo final (Fusionando Calidad)...")
+                    actualizar_terminal("Fusionando audio y video en alta calidad...")
                     page.update()
 
             class InterceptorLogger:
@@ -147,19 +155,14 @@ def main(page: ft.Page):
                 def warning(self, msg): pass
                 def error(self, msg): actualizar_terminal(f"ERR: {msg}")
 
-            # LA MÁSCARA ANTI-BLOQUEOS
             opts = {
-                'quiet': True, # Esto evita que Windows sature la memoria
+                'quiet': True, 
                 'progress_hooks': [hook_progreso],
                 'logger': InterceptorLogger(),
                 'nocheckcertificate': True,
                 'geo_bypass': True,
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36'
-                },
-                'extractor_args': {
-                    'youtube': {'player_client': ['android', 'ios']},
-                    'tiktok': {'api_hostname': 'api16-normal-c-useast1a.tiktokv.com'} 
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
             }
 
@@ -176,23 +179,26 @@ def main(page: ft.Page):
                 opts['format'] = 'bestvideo+bestaudio/best'
                 opts['merge_output_format'] = 'mp4'
 
-            # VINCULACIÓN CON EL MOTOR
+            # CONEXIÓN DIRECTA CON APPDATA
             if os.path.exists(RUTA_FFMPEG):
                 opts['ffmpeg_location'] = RUTA_FFMPEG
-                actualizar_terminal("Motor HD detectado.")
-            else:
-                actualizar_terminal("ADVERTENCIA: Motor HD no instalado. Calidad reducida.")
 
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.download([url])
                 
                 progress_bar.value = 1.0
-                actualizar_terminal(f"✅ ¡Completado! Guardado en Descargas.")
-                reiniciar_ui()
+                actualizar_terminal(f"✅ ¡Éxito! Guardado en Descargas.")
+                time.sleep(3)
+                txt_url.value = ""
+                validar_input(None)
+                txt_url.disabled = False
+                dd_tipo.disabled = False
+                progress_bar.value = 0.0
+                actualizar_terminal("Listo para un nuevo enlace.")
 
             except Exception as ex:
-                actualizar_terminal(f"❌ Enlace bloqueado o inválido.")
+                actualizar_terminal(f"❌ Error en la descarga.")
                 progress_bar.value = 0.0
                 txt_url.disabled = False
                 validar_input(None)
@@ -202,7 +208,6 @@ def main(page: ft.Page):
 
     btn_descargar.on_click = ejecutar_descarga
 
-    # --- CONSTRUIR TARJETA ---
     card = ft.Container(
         content=ft.Column(
             [
