@@ -49,10 +49,10 @@ def main(page: ft.Page):
     dd_tipo = ft.Dropdown(
         label="Formato de Descarga", 
         options=[
-            ft.dropdown.Option("🎬 Video MP4 (Máxima Calidad)"),
-            ft.dropdown.Option("🎵 Audio MP3 (Máxima Calidad)")
+            ft.dropdown.Option("🎬 Video MP4 (Máxima Calidad Posible)"),
+            ft.dropdown.Option("🎵 Audio MP3 (Máxima Calidad Posible)")
         ], 
-        value="🎬 Video MP4 (Máxima Calidad)",
+        value="🎬 Video MP4 (Máxima Calidad Posible)",
         bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=10, width=450
     )
     
@@ -60,6 +60,9 @@ def main(page: ft.Page):
         "INICIAR DESCARGA", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
         style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), padding=15), width=250
     )
+
+    spinner_carga = ft.ProgressRing(width=20, height=20, stroke_width=3, color=COLOR_CYAN, visible=False)
+    fila_estado = ft.Row([spinner_carga, ft.Text("Terminal de Procesos:", size=12, color=COLOR_TEXT_DIM, weight="bold")], alignment=ft.MainAxisAlignment.START)
 
     terminal_lista = ft.ListView(expand=True, spacing=2, auto_scroll=True)
     caja_terminal = ft.Container(
@@ -72,7 +75,6 @@ def main(page: ft.Page):
         terminal_lista.controls.append(ft.Text(f"> {texto}", color=color, size=11, font_family="Consolas"))
         page.update()
 
-    # EL ASESINO DEL BUG: Silenciamos todo excepto los errores reales
     class InterceptorLogger:
         def debug(self, msg): pass 
         def info(self, msg): pass
@@ -98,6 +100,7 @@ def main(page: ft.Page):
         txt_url.disabled = False
         validar_input(None)
         dd_tipo.disabled = False
+        spinner_carga.visible = False
         terminal_lista.controls.clear()
         escribir_terminal("Sistema reiniciado y listo para otro enlace.", COLOR_CYAN)
         page.update()
@@ -106,18 +109,20 @@ def main(page: ft.Page):
         url = txt_url.value.strip()
         seleccion = dd_tipo.value
         
-        # Bloqueo anti-spam
         btn_descargar.disabled = True
         btn_descargar.bgcolor = COLOR_BOTON_OFF
         btn_descargar.color = COLOR_TEXT_DIM
         txt_url.disabled = True
         dd_tipo.disabled = True
+        
+        spinner_carga.visible = True
+        
         terminal_lista.controls.clear()
-        escribir_terminal(f"Iniciando descarga universal...", COLOR_CYAN)
+        escribir_terminal(f"Iniciando descarga a MÁXIMA resolución...", COLOR_CYAN)
         page.update()
 
         def trabajo_descarga():
-            estado_ui = {"ultimo_p": -10} # Variable para imprimir solo cada 10%
+            estado_ui = {"ultimo_p": -10} 
 
             def hook_progreso(d):
                 if d['status'] == 'downloading':
@@ -125,13 +130,12 @@ def main(page: ft.Page):
                     percent_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
                     try:
                         p = int(float(percent_str))
-                        # Solo actualizamos la UI si avanzó un 10% (Evita el congelamiento)
                         if p - estado_ui["ultimo_p"] >= 10:
                             escribir_terminal(f"Descargando: {p}% completado...", COLOR_GREEN)
                             estado_ui["ultimo_p"] = p
                     except ValueError: pass
                 elif d['status'] == 'finished':
-                    escribir_terminal("Descarga terminada. Uniendo archivos (Espere)...", COLOR_CYAN)
+                    escribir_terminal("Descarga terminada. Convirtiendo/Muxing (Esto puede tardar)...", COLOR_CYAN)
 
             opts = {
                 'progress_hooks': [hook_progreso],
@@ -141,16 +145,17 @@ def main(page: ft.Page):
                 'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'web']}}
             }
 
-            # LÓGICA DE NOMBRES Y FORMATOS SEPARADA
             if "Audio" in seleccion:
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Audio).%(ext)s')
                 opts['format'] = 'bestaudio/best'
                 opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
             else:
                 opts['outtmpl'] = os.path.join(RUTA_DESCARGAS, '%(title).100s (Video).%(ext)s')
-                # Forzamos MP4 universal para evitar videos corruptos o sin sonido
-                opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
-                opts['postprocessors'] = [{'key': 'FFmpegVideoConvertor', 'preferedformat': 'mp4'}]
+                # LA MAGIA DE LA MÁXIMA CALIDAD:
+                # 1. Agarra el mejor video (sea webm, mp4, mkv) y el mejor audio.
+                opts['format'] = 'bestvideo+bestaudio/best'
+                # 2. Obliga a FFmpeg a fusionarlo todo dentro de un archivo .mp4 universal.
+                opts['merge_output_format'] = 'mp4'
 
             if os.path.exists(RUTA_FFMPEG):
                 opts['ffmpeg_location'] = RUTA_FFMPEG
@@ -167,6 +172,7 @@ def main(page: ft.Page):
                 txt_url.disabled = False
                 validar_input(None)
                 dd_tipo.disabled = False
+                spinner_carga.visible = False
                 page.update()
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
@@ -185,6 +191,7 @@ def main(page: ft.Page):
                 ft.Container(height=10),
                 btn_descargar,
                 ft.Container(height=10),
+                ft.Container(content=fila_estado, width=450), 
                 caja_terminal,
                 ft.Text("Desarrollado por CachyMedia & Gemini © 2026", size=10, color=COLOR_TEXT_DIM)
             ],
