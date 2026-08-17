@@ -4,9 +4,11 @@ import re
 import time
 import threading
 import urllib.request
+import queue
 import flet as ft
 import yt_dlp
 
+# --- EL SILENCIADOR DE WINDOWS ---
 if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
@@ -41,6 +43,9 @@ def main(page: ft.Page):
     page.padding = 20
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+
+    # --- EL BUZÓN DE MENSAJES (LA CURA AL CONGELAMIENTO) ---
+    cola_ui = queue.Queue()
 
     lbl_titulo = ft.Text("🎬 CachyVIDEOS 🎬", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador de Video Universal", size=12, color=COLOR_TEXT_DIM)
@@ -78,42 +83,63 @@ def main(page: ft.Page):
         border_radius=10, text_size=10, width=380, height=140
     )
 
-    def actualizar_terminal(texto):
-        terminal_texto.value += f"> {texto}\n"
-        page.update()
+    # --- EL REPARTIDOR DE MENSAJES (DIBUJA SIN TRABARSE) ---
+    def actualizador_interfaz():
+        while True:
+            try:
+                mensaje = cola_ui.get()
+                accion = mensaje[0]
+                
+                if accion == "terminal":
+                    terminal_texto.value += f"> {mensaje[1]}\n"
+                elif accion == "progreso":
+                    progress_bar.value = mensaje[1]
+                    terminal_texto.value += f"> {mensaje[2]}\n"
+                elif accion == "limpiar_barra":
+                    progress_bar.value = mensaje[1]
+                elif accion == "limpiar_terminal":
+                    terminal_texto.value = ""
+                elif accion == "limpiar_url":
+                    txt_url.value = ""
+                elif accion == "estado_botones":
+                    bloqueado = mensaje[1]
+                    btn_descargar.disabled = bloqueado
+                    txt_url.disabled = bloqueado
+                    dd_calidad.disabled = bloqueado
+                    if not bloqueado and txt_url.value.strip():
+                        btn_descargar.bgcolor = COLOR_CYAN
+                        btn_descargar.color = "#000000"
+                    else:
+                        btn_descargar.bgcolor = COLOR_BOTON_OFF
+                        btn_descargar.color = COLOR_TEXT_DIM
+                
+                page.update()
+                cola_ui.task_done()
+            except Exception:
+                pass
+
+    # Iniciamos al repartidor en las sombras
+    threading.Thread(target=actualizador_interfaz, daemon=True).start()
 
     def verificar_motor():
         if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
-            actualizar_terminal("⚙️ Configurando FFmpeg por primera vez...")
+            cola_ui.put(("terminal", "⚙️ Configurando FFmpeg por primera vez..."))
             try:
                 url = "https://github.com/imageio/imageio-binaries/raw/master/ffmpeg/ffmpeg-win32-v4.2.2.exe"
                 urllib.request.urlretrieve(url, RUTA_FFMPEG)
-                actualizar_terminal("✅ Motor HD instalado. ¡1080p+ Desbloqueado!")
+                cola_ui.put(("terminal", "✅ Motor HD instalado. ¡1080p+ Desbloqueado!"))
             except Exception as e:
-                actualizar_terminal(f"❌ Error instalando el motor: {e}")
+                cola_ui.put(("terminal", f"❌ Error instalando el motor: {e}"))
         elif os.path.exists(RUTA_FFMPEG):
-            actualizar_terminal("✅ Motor HD listo y operativo.")
+            cola_ui.put(("terminal", "✅ Motor HD listo y operativo."))
 
     threading.Thread(target=verificar_motor, daemon=True).start()
 
-    def resetear_interfaz():
-        txt_url.disabled = False
-        dd_calidad.disabled = False
-        progress_bar.value = 0.0
-        
-        if len(txt_url.value.strip()) > 0:
-            btn_descargar.disabled = False
-            btn_descargar.bgcolor = COLOR_CYAN
-            btn_descargar.color = "#000000"
-        else:
-            btn_descargar.disabled = True
-            btn_descargar.bgcolor = COLOR_BOTON_OFF
-            btn_descargar.color = COLOR_TEXT_DIM
-            
-        page.update()
-
     def validar_input(e):
-        resetear_interfaz()
+        if len(txt_url.value.strip()) > 0:
+            cola_ui.put(("estado_botones", False))
+        else:
+            cola_ui.put(("estado_botones", True))
 
     txt_url.on_change = validar_input
 
@@ -121,16 +147,11 @@ def main(page: ft.Page):
         url = txt_url.value.strip()
         seleccion = dd_calidad.value
         
-        btn_descargar.disabled = True
-        btn_descargar.bgcolor = COLOR_BOTON_OFF
-        btn_descargar.color = COLOR_TEXT_DIM
-        txt_url.disabled = True
-        dd_calidad.disabled = True
-        terminal_texto.value = ""
-        progress_bar.value = 0.0
-        page.update()
-        
-        actualizar_terminal("Iniciando secuencia de descarga...")
+        # Mandamos cartas al buzón para bloquear la interfaz visual
+        cola_ui.put(("estado_botones", True))
+        cola_ui.put(("limpiar_terminal", None))
+        cola_ui.put(("limpiar_barra", 0.0))
+        cola_ui.put(("terminal", "Iniciando secuencia de descarga..."))
 
         def trabajo_descarga():
             max_intentos = 4
@@ -148,15 +169,14 @@ def main(page: ft.Page):
                             try:
                                 p = float(p_str)
                                 if p - estado_ui["ultimo_p"] >= 5:
-                                    progress_bar.value = p / 100.0
-                                    actualizar_terminal(f"Descargando: {p_str}%")
+                                    # En vez de tocar Flet, dejamos una carta en el buzón
+                                    cola_ui.put(("progreso", p / 100.0, f"Descargando: {p_str}%"))
                                     estado_ui["ultimo_p"] = p
                             except ValueError: pass
                             
                         elif d['status'] == 'finished':
-                            progress_bar.value = None
-                            actualizar_terminal("Ensamblando Video MP4 Universal...")
-                            page.update()
+                            cola_ui.put(("limpiar_barra", None))
+                            cola_ui.put(("terminal", "Ensamblando Video MP4 Universal..."))
 
                     class InterceptorLogger:
                         def debug(self, msg): pass 
@@ -188,28 +208,26 @@ def main(page: ft.Page):
                         ydl.download([url])
                     
                     descarga_exitosa = True
-                    progress_bar.value = 1.0
-                    actualizar_terminal(f"✅ ¡Video Guardado en Descargas!")
+                    cola_ui.put(("limpiar_barra", 1.0))
+                    cola_ui.put(("terminal", "✅ ¡Video Guardado en Descargas!"))
                     time.sleep(3)
-                    txt_url.value = ""
-                    actualizar_terminal("✅ Listo para un nuevo enlace.")
+                    cola_ui.put(("limpiar_url", None))
+                    cola_ui.put(("terminal", "✅ Listo para un nuevo enlace."))
 
                 except Exception as ex:
-                    # EL BUCLE TERCO: Si falla por CUALQUIER razón, vuelve a intentar.
                     if intento_actual < max_intentos:
-                        actualizar_terminal(f"⚠️ El servidor rechazó la conexión.")
-                        actualizar_terminal(f"🔄 Reintentando... (Intento {intento_actual}/{max_intentos})")
+                        cola_ui.put(("terminal", "⚠️ El servidor rechazó la conexión."))
+                        cola_ui.put(("terminal", f"🔄 Reintentando... (Intento {intento_actual}/{max_intentos})"))
                         time.sleep(2) 
                         intento_actual += 1
-                        progress_bar.value = 0.0
-                        page.update()
+                        cola_ui.put(("limpiar_barra", 0.0))
                     else:
-                        # Si a la 4ta no jala, lanzamos tu mensaje
-                        actualizar_terminal("❌ El servidor está muy estricto hoy o el enlace no jala.")
-                        actualizar_terminal("Vuelve a picarle al botón o intenta con otro enlace. Ni modo, andamos haciendo milagros. xd")
+                        cola_ui.put(("terminal", "❌ El servidor está muy estricto hoy o el enlace no jala."))
+                        cola_ui.put(("terminal", "Vuelve a picarle al botón o intenta con otro enlace. Ni modo, andamos haciendo milagros. xd"))
                         break
 
-            resetear_interfaz()
+            # Desbloqueamos los botones mandando la última carta al buzón
+            cola_ui.put(("estado_botones", False))
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
 
