@@ -15,6 +15,7 @@ COLOR_RED = "#ff5555"
 COLOR_TERM_BG = "#000000"  
 COLOR_TEXT = "#c9d1d9"     
 COLOR_TEXT_DIM = "#8f9bb3"
+COLOR_BOTON_OFF = "#2a2e45" # Color para botones apagados
 
 DIRECTORIO_APP = os.path.dirname(os.path.abspath(sys.argv[0]))
 NOMBRE_FFMPEG = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
@@ -28,10 +29,17 @@ def obtener_ruta_descargas():
 
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
+def obtener_nombre_calidad(h):
+    """Nombra la calidad de forma realista"""
+    if h >= 1080: return f"💎 Ultra HD ({h}p)"
+    elif h >= 720: return f"🎬 Alta Calidad ({h}p)"
+    elif h >= 480: return f"📺 Calidad Media ({h}p)"
+    else: return f"📱 Calidad Baja ({h}p)"
+
 def main(page: ft.Page):
     page.title = "Cachy Media Downloader"
     page.window_width = 540
-    page.window_height = 750
+    page.window_height = 800
     page.window_resizable = False
     page.bgcolor = COLOR_BG
     page.padding = 20
@@ -43,25 +51,27 @@ def main(page: ft.Page):
     
     txt_url = ft.TextField(
         hint_text="Pega la URL del video aquí...", 
-        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=10, expand=True, text_size=13
+        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=10, width=450, text_size=13
     )
     
+    # Botón Analizar apagado por defecto
     btn_analizar = ft.ElevatedButton(
-        "🔍 Analizar", bgcolor=COLOR_CARD, color=COLOR_CYAN, disabled=True,
-        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))
+        "🔍 Analizar Enlace", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), padding=15), width=250
     )
 
     dd_calidad = ft.Dropdown(
         label="Selecciona una Calidad", 
         options=[ft.dropdown.Option("Esperando enlace...")], 
         value="Esperando enlace...",
-        bgcolor=COLOR_TERM_BG, border_color=COLOR_CYAN, border_radius=10, disabled=True, width=450
+        bgcolor=COLOR_TERM_BG, border_color=COLOR_BOTON_OFF, border_radius=10, disabled=True, width=450
     )
 
     progress_bar = ft.ProgressBar(width=450, color=COLOR_CYAN, bgcolor=COLOR_TERM_BG, value=0.0)
     
+    # Botón Descargar apagado por defecto
     btn_descargar = ft.ElevatedButton(
-        "INICIAR DESCARGA", bgcolor=COLOR_CYAN, color="#000000", disabled=True,
+        "INICIAR DESCARGA", bgcolor=COLOR_BOTON_OFF, color=COLOR_TEXT_DIM, disabled=True,
         style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), padding=15), width=250
     )
 
@@ -72,7 +82,8 @@ def main(page: ft.Page):
         padding=10, height=120, width=450
     )
 
-    lbl_creditos = ft.Text("Desarrollado por CachyMedia © 2026", size=10, color=COLOR_TEXT_DIM)
+    # NUESTRA FIRMA
+    lbl_creditos = ft.Text("Desarrollado por SEMG_MC 2026", size=10, color=COLOR_TEXT_DIM)
 
     # Variables globales
     video_data = {"formatos": {}}
@@ -88,38 +99,35 @@ def main(page: ft.Page):
         def warning(self, msg): escribir_terminal(msg, "#f1fa8c")
         def error(self, msg): escribir_terminal(msg, COLOR_RED)
 
-    def hook_progreso(d):
-        if d['status'] == 'downloading':
-            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-            percent_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
-            try:
-                p = float(percent_str)
-                progress_bar.value = p / 100.0
-                escribir_terminal(f"Descargando: {p}% ...", COLOR_GREEN)
-            except ValueError: pass
-            page.update()
-        elif d['status'] == 'finished':
-            progress_bar.value = None
-            escribir_terminal("Descarga completada. Procesando/Fusión...", COLOR_CYAN)
-            page.update()
-
     def validar_input(e):
-        # Solo enciende "Analizar" si hay texto escrito
-        btn_analizar.disabled = len(txt_url.value.strip()) == 0
+        # Enciende el botón Analizar solo si hay texto
+        if len(txt_url.value.strip()) > 0:
+            btn_analizar.disabled = False
+            btn_analizar.bgcolor = COLOR_CARD
+            btn_analizar.color = COLOR_CYAN
+        else:
+            btn_analizar.disabled = True
+            btn_analizar.bgcolor = COLOR_BOTON_OFF
+            btn_analizar.color = COLOR_TEXT_DIM
         page.update()
 
     txt_url.on_change = validar_input
 
     def reiniciar_ui():
-        """Regresa la app a su estado original para el siguiente video"""
-        time.sleep(3) # Espera 3 segundos para que el usuario lea el éxito
+        time.sleep(3)
         txt_url.value = ""
         txt_url.disabled = False
-        btn_analizar.disabled = True
+        validar_input(None) # Llama a la validación para apagar el botón Analizar
+        
         dd_calidad.options = [ft.dropdown.Option("Esperando enlace...")]
         dd_calidad.value = "Esperando enlace..."
         dd_calidad.disabled = True
+        dd_calidad.border_color = COLOR_BOTON_OFF
+        
         btn_descargar.disabled = True
+        btn_descargar.bgcolor = COLOR_BOTON_OFF
+        btn_descargar.color = COLOR_TEXT_DIM
+        
         progress_bar.value = 0.0
         terminal_lista.controls.clear()
         escribir_terminal("Sistema reiniciado y listo.", COLOR_CYAN)
@@ -129,10 +137,11 @@ def main(page: ft.Page):
         url = txt_url.value.strip()
         if not url: return
         
-        # Bloqueo total anti-spam
+        # Bloqueo total
         btn_analizar.disabled = True
+        btn_analizar.bgcolor = COLOR_BOTON_OFF
+        btn_analizar.color = COLOR_TEXT_DIM
         txt_url.disabled = True
-        dd_calidad.disabled = True
         btn_descargar.disabled = True
         terminal_lista.controls.clear()
         progress_bar.value = 0.0
@@ -141,7 +150,12 @@ def main(page: ft.Page):
 
         def trabajo_analisis():
             try:
-                opts = {'quiet': True, 'logger': InterceptorLogger()}
+                # Agregamos truco para evitar el Error 403 de YouTube
+                opts = {
+                    'quiet': True, 
+                    'logger': InterceptorLogger(),
+                    'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'web']}}
+                }
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     info = ydl.extract_info(url, download=False)
                     
@@ -155,27 +169,32 @@ def main(page: ft.Page):
                     video_data["formatos"].clear()
                     
                     for h in calidades_ordenadas:
-                        nombre = f"🎬 MP4 - Alta Calidad ({h}p)"
+                        nombre = obtener_nombre_calidad(h)
                         opciones.append(ft.dropdown.Option(nombre))
                         video_data["formatos"][nombre] = str(h)
                         
-                    # Audio a máxima calidad siempre
                     opciones.append(ft.dropdown.Option("🎵 MP3 - Máxima Calidad (320kbps)"))
                     video_data["formatos"]["🎵 MP3 - Máxima Calidad (320kbps)"] = "audio"
 
                     dd_calidad.options = opciones
                     dd_calidad.value = opciones[0].key
                     dd_calidad.disabled = False
+                    dd_calidad.border_color = COLOR_CYAN
                     
+                    # Encendemos el botón de Descargar
                     btn_descargar.disabled = False
-                    txt_url.disabled = False # Liberamos para que pueda corregir
+                    btn_descargar.bgcolor = COLOR_CYAN
+                    btn_descargar.color = "#000000"
+                    
+                    txt_url.disabled = False 
+                    validar_input(None) # Para re-encender el botón analizar por si quiere cambiar el link
                     escribir_terminal(f"Análisis exitoso. Selecciona formato.", COLOR_CYAN)
 
             except Exception as ex:
-                escribir_terminal(f"Error al analizar el enlace.", COLOR_RED)
+                escribir_terminal(f"Error al analizar. Puede ser privado o bloqueado.", COLOR_RED)
                 txt_url.disabled = False
+                validar_input(None)
             finally:
-                btn_analizar.disabled = len(txt_url.value.strip()) == 0
                 page.update()
 
         threading.Thread(target=trabajo_analisis, daemon=True).start()
@@ -184,9 +203,13 @@ def main(page: ft.Page):
         url = txt_url.value.strip()
         seleccion = dd_calidad.value
         
-        # SÚPER BLOQUEO ANTI-SPAM
+        # Bloqueo total durante la descarga
         btn_descargar.disabled = True
+        btn_descargar.bgcolor = COLOR_BOTON_OFF
+        btn_descargar.color = COLOR_TEXT_DIM
         btn_analizar.disabled = True
+        btn_analizar.bgcolor = COLOR_BOTON_OFF
+        btn_analizar.color = COLOR_TEXT_DIM
         txt_url.disabled = True
         dd_calidad.disabled = True
         progress_bar.value = 0.0
@@ -196,10 +219,31 @@ def main(page: ft.Page):
         def trabajo_descarga():
             tipo = video_data["formatos"][seleccion]
             
+            # Control de tiempo para evitar que la UI se congele (El Fix de la Ventana)
+            estado_ui = {"ultimo_update": 0.0}
+
+            def hook_progreso(d):
+                if d['status'] == 'downloading':
+                    ahora = time.time()
+                    # SOLO actualiza la pantalla si ha pasado medio segundo
+                    if ahora - estado_ui["ultimo_update"] > 0.5:
+                        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                        percent_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
+                        try:
+                            p = float(percent_str)
+                            progress_bar.value = p / 100.0
+                            escribir_terminal(f"Descargando: {p}% ...", COLOR_GREEN)
+                            page.update()
+                            estado_ui["ultimo_update"] = ahora
+                        except ValueError: pass
+                elif d['status'] == 'finished':
+                    progress_bar.value = None
+                    escribir_terminal("Descarga completada. Procesando/Fusión...", COLOR_CYAN)
+                    page.update()
+
             if tipo == "audio":
                 nombre_archivo = '%(title).100s (Audio).%(ext)s'
                 formato_ydl = 'bestaudio/best'
-                # 320 es la máxima calidad real en MP3
                 postprocessors = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}]
             else:
                 nombre_archivo = f'%(title).100s ({tipo}p).%(ext)s'
@@ -212,6 +256,7 @@ def main(page: ft.Page):
                 'progress_hooks': [hook_progreso],
                 'logger': InterceptorLogger(),
                 'postprocessors': postprocessors,
+                'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'web']}}
             }
 
             if os.path.exists(RUTA_FFMPEG):
@@ -224,34 +269,35 @@ def main(page: ft.Page):
                 progress_bar.value = 1.0
                 escribir_terminal(f"¡ÉXITO TOTAL! Guardado en Descargas.", COLOR_GREEN)
                 page.update()
-                reiniciar_ui() # Llama al auto-reinicio
+                reiniciar_ui()
 
             except Exception as ex:
-                escribir_terminal(f"Falló la descarga. Intenta de nuevo.", COLOR_RED)
+                escribir_terminal(f"Falló la descarga (Error 403 o Privado).", COLOR_RED)
                 progress_bar.value = 0.0
-                # Si falla, liberamos botones manualmente
-                btn_analizar.disabled = False
                 txt_url.disabled = False
+                validar_input(None)
                 dd_calidad.disabled = False
+                
                 btn_descargar.disabled = False
+                btn_descargar.bgcolor = COLOR_CYAN
+                btn_descargar.color = "#000000"
                 page.update()
 
         threading.Thread(target=trabajo_descarga, daemon=True).start()
 
-    # --- ASIGNAR EVENTOS ---
     btn_analizar.on_click = analizar_enlace
     btn_descargar.on_click = ejecutar_descarga
 
     # --- CONSTRUIR TARJETA CENTRAL ---
-    fila_input = ft.Row([txt_url, btn_analizar], spacing=10)
-    
     card = ft.Container(
         content=ft.Column(
             [
                 lbl_titulo, 
                 lbl_sub, 
                 ft.Container(height=10), 
-                fila_input, 
+                txt_url, 
+                btn_analizar,
+                ft.Container(height=10), 
                 dd_calidad, 
                 ft.Container(height=5),
                 progress_bar,
