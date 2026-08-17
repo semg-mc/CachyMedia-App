@@ -7,6 +7,7 @@ import urllib.request
 import flet as ft
 import yt_dlp
 
+# --- EL SILENCIADOR DE WINDOWS ---
 if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
@@ -33,7 +34,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 CachyVIDEOS 🎬"
+    page.title = "🎬 CachyVIDEOS🗿"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -42,8 +43,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    # --- EL DESFIBRILADOR GRÁFICO (TRUCO SUCIO) ---
-    # Este pixel invisible se actualizará constantemente para evitar que Windows duerma la ventana
+    # --- EL DESFIBRILADOR GRÁFICO (TRUCO SUCIO PARA WINDOWS) ---
     pixel_fantasma = ft.Text("", size=1) 
     page.add(pixel_fantasma)
 
@@ -53,7 +53,6 @@ def main(page: ft.Page):
             pixel_fantasma.value = " " if pixel_fantasma.value == "" else ""
             page.update()
 
-    # Iniciamos el latido en las sombras
     threading.Thread(target=latido_cardiaco, daemon=True).start()
 
     lbl_titulo = ft.Text("🎬 CachyVIDEOS 🎬", size=26, weight="bold", color=COLOR_CYAN)
@@ -235,6 +234,9 @@ def main(page: ft.Page):
             resetear_interfaz()
 
         page.run_thread(trabajo_descarga)
+
+    # ¡ESTA ES LA LÍNEA MÁGICA QUE HABÍA BORRADO!
+    btn_descargar.on_click = ejecutar_descarga
 
     card = ft.Container(
         content=ft.Column(
