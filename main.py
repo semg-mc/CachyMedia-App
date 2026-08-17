@@ -86,7 +86,7 @@ def main(page: ft.Page):
     def actualizar_progreso_fluido(p_str, p_float):
         lineas = terminal_texto.value.strip().split('\n')
         # Si la última línea ya dice "Descargando", la reemplazamos (Cero lag)
-        if lineas y "Descargando:" in lineas[-1]:
+        if lineas and "Descargando:" in lineas[-1]:
             lineas[-1] = f"> Descargando: {p_str}%"
             terminal_texto.value = "\n".join(lineas) + "\n"
         else:
