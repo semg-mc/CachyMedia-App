@@ -2,11 +2,11 @@ import os
 import sys
 import re
 import time
-import threading
 import urllib.request
 import flet as ft
 import yt_dlp
 
+# --- EL SILENCIADOR DE WINDOWS ---
 if sys.platform == "win32" and getattr(sys, 'frozen', False):
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
@@ -33,7 +33,7 @@ def obtener_ruta_descargas():
 RUTA_DESCARGAS = obtener_ruta_descargas()
 
 def main(page: ft.Page):
-    page.title = "🎬 CachyVIDEOS 🎬"
+    page.title = "🎬 CachyVIDEOS🗿"
     page.window_width = 450
     page.window_height = 700
     page.window_resizable = False
@@ -41,18 +41,6 @@ def main(page: ft.Page):
     page.padding = 20
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-
-    # --- EL DESFIBRILADOR GRÁFICO (Mantiene despierta la ventana) ---
-    pixel_fantasma = ft.Text("", size=1) 
-    page.add(pixel_fantasma)
-
-    def latido_cardiaco():
-        while True:
-            time.sleep(0.5)
-            pixel_fantasma.value = " " if pixel_fantasma.value == "" else ""
-            page.update()
-
-    threading.Thread(target=latido_cardiaco, daemon=True).start()
 
     lbl_titulo = ft.Text("🎬 CachyVIDEOS 🎬", size=26, weight="bold", color=COLOR_CYAN)
     lbl_sub = ft.Text("Descargador de Video Universal", size=12, color=COLOR_TEXT_DIM)
@@ -94,19 +82,7 @@ def main(page: ft.Page):
         terminal_texto.value += f"> {texto}\n"
         page.update()
 
-    # --- LA MAGIA CONTRA EL TARTAMUDEO ---
-    def actualizar_progreso_fluido(p_str, p_float):
-        lineas = terminal_texto.value.strip().split('\n')
-        if lineas and "Descargando:" in lineas[-1]:
-            lineas[-1] = f"> Descargando: {p_str}%"
-            terminal_texto.value = "\n".join(lineas) + "\n"
-        else:
-            terminal_texto.value += f"> Descargando: {p_str}%\n"
-        
-        progress_bar.value = p_float
-        page.update()
-
-    def verificar_motor():
+    def verificar_motor(*args):
         if sys.platform == "win32" and not os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("⚙️ Configurando FFmpeg por primera vez...")
             try:
@@ -118,7 +94,8 @@ def main(page: ft.Page):
         elif os.path.exists(RUTA_FFMPEG):
             actualizar_terminal("✅ Motor HD listo y operativo.")
 
-    threading.Thread(target=verificar_motor, daemon=True).start()
+    # Usamos la herramienta nativa de Flet para el motor
+    page.run_thread(verificar_motor)
 
     def resetear_interfaz():
         txt_url.disabled = False
@@ -156,14 +133,15 @@ def main(page: ft.Page):
         
         actualizar_terminal("Iniciando secuencia de descarga...")
 
-        def trabajo_descarga():
+        # ESTA ES LA FUNCIÓN QUE FLET ADMINISTRARÁ NATIVAMENTE
+        def trabajo_descarga(*args):
             max_intentos = 4
             intento_actual = 1
             descarga_exitosa = False
 
             while intento_actual <= max_intentos and not descarga_exitosa:
                 try:
-                    estado_ui = {"ultimo_tiempo": 0.0} 
+                    estado_ui = {"ultimo_p": -5} 
 
                     def hook_progreso(d):
                         if d['status'] == 'downloading':
@@ -171,10 +149,10 @@ def main(page: ft.Page):
                             p_str = ansi_escape.sub('', d.get('_percent_str', '0.0%')).replace('%', '').strip()
                             try:
                                 p = float(p_str)
-                                ahora = time.time()
-                                if ahora - estado_ui["ultimo_tiempo"] >= 0.3:
-                                    actualizar_progreso_fluido(p_str, p / 100.0)
-                                    estado_ui["ultimo_tiempo"] = ahora
+                                if p - estado_ui["ultimo_p"] >= 5:
+                                    progress_bar.value = p / 100.0
+                                    actualizar_terminal(f"Descargando: {p_str}%")
+                                    estado_ui["ultimo_p"] = p
                             except ValueError: pass
                             
                         elif d['status'] == 'finished':
@@ -219,7 +197,6 @@ def main(page: ft.Page):
                     actualizar_terminal("✅ Listo para un nuevo enlace.")
 
                 except Exception as ex:
-                    # EL BUCLE TERCO INTACTO
                     if intento_actual < max_intentos:
                         actualizar_terminal(f"⚠️ El servidor rechazó la conexión.")
                         actualizar_terminal(f"🔄 Reintentando... (Intento {intento_actual}/{max_intentos})")
@@ -229,12 +206,13 @@ def main(page: ft.Page):
                         page.update()
                     else:
                         actualizar_terminal("❌ El servidor está muy estricto hoy o el enlace no jala.")
-                        actualizar_terminal("Vuelve a picarle al botón o intenta con otro enlace. Ni modo, andamos haciendo milagros. xd")
+                        actualizar_terminal("Vuelve a picarle al botón o intenta con otro enlace. Ni modo. xd")
                         break
 
             resetear_interfaz()
 
-        threading.Thread(target=trabajo_descarga, daemon=True).start()
+        # LA MAGIA OCURRE AQUÍ: Dejamos que Flet lance y controle el hilo.
+        page.run_thread(trabajo_descarga)
 
     btn_descargar.on_click = ejecutar_descarga
 
