@@ -16,10 +16,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar Motores (Versiones Congeladas)
+      - name: Instalar Motores (Flet y yt-dlp)
         run: |
           python -m pip install --upgrade pip
-          pip install flet==0.21.2 yt-dlp pyinstaller==6.9.0 pillow
+          pip install flet yt-dlp pyinstaller pillow
 
       - name: Empaquetar a .exe
         run: flet pack main.py --name "CachyMedia" --icon "icono.png"
